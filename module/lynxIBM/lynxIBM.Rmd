@@ -1,0 +1,99 @@
+---
+title: "lynxIBM"
+author: ""
+date: "27 avril 2020"
+output: pdf_document
+---
+
+# Overview
+
+Provide an overview of what the module does / how to use the module.
+
+Module documentation should be written so that others can use your module.
+This is a template for module documentation, and should be changed to reflect your module.
+
+## R Markdown
+
+R Markdown syntax allows R code, outputs, and figures to be rendered in the documentation.
+
+For help writing in R Markdown, see http://rmarkdown.rstudio.com/.
+
+# Usage
+
+```{r module_usage}
+library(igraph)
+library(SpaDES.core)
+library(raster)
+
+# Define the paths
+moduleDir <- file.path("C:/Users/Bauduin/Documents/GitHub/appendix_lynxIBM/module")
+inputDir <- file.path(moduleDir, "inputs") %>% reproducible::checkPath(create = TRUE)
+outputDir <- file.path(moduleDir, "outputs")
+cacheDir <- file.path(outputDir, "cache")
+
+# Module parameters
+times <- list(start = 1, end = 51) # to run 50 years
+parameters <- list(
+  .plotInitialTime = NA, # no plotting
+  .plotInterval = NA,
+  testON = TRUE # activate the inside-function tests 
+  )
+
+# Input files
+# Habitat quality raster
+habMapSpaDES <- raster("C:/Users/Bauduin/Documents/GitHub/appendix_lynxIBM/module/inputs/habMap.tif")
+# Collision probabilities raster
+collProbSpaDES <- raster("C:/Users/Bauduin/Documents/GitHub/appendix_lynxIBM/module/inputs/collProb.tif") 
+# List of 600 different initial population (SpatialPointsDataFrame)
+load("C:/Users/Bauduin/Documents/GitHub/appendix_lynxIBM/module/inputs/listLynxInitPop.RData") 
+popInitSpaDES <- listLynxInitPop[[sample(1:length(listLynxInitPop), 1)]] # sample one initial population
+# Population areas raster
+fourPopSpaDES <- raster("C:/Users/Bauduin/Documents/GitHub/appendix_lynxIBM/module/inputs/fourPop.tif") 
+
+modules <- list("lynxIBM")
+objects = c("habMapSpaDES", "collProbSpaDES", "popInitSpaDES", "fourPopSpaDES")
+paths <- list(
+  cachePath = cacheDir,
+  modulePath = moduleDir,
+  inputPath = inputDir,
+  outputPath = outputDir
+)
+
+# Initialize the module
+lynxIBMinit <- simInit(times = times, params = list(lynxIBM = parameters), modules = modules,
+                objects = objects, paths = paths)
+
+# Run one simulation
+lynxIBMrun <- spades(lynxIBMinit, debug = TRUE)
+
+# Save the simulation output
+save(mySimOut, file = paste0("C:/Users/Bauduin/Documents/GitHub/appendix_lynxIBM/module/outputs/lynxIBMrun_", sample(1:100000,1), ".RData"))
+
+```
+
+# Events
+
+Describe what happens for each event type.
+
+## Plotting
+
+Write what is plotted.
+
+## Saving
+
+Write what is saved.
+
+# Data dependencies
+
+## Input data
+
+How to obtain input data, and a description of the data required by the module.
+If `sourceURL` is specified, `downloadData("lynxIBM", "path/to/modules/dir")` may be sufficient.
+
+## Output data
+
+Description of the module outputs.
+
+# Links to other modules
+
+Describe any anticipated linkages to other modules.
