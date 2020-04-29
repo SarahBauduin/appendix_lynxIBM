@@ -26,7 +26,7 @@ library(SpaDES.core)
 library(raster)
 
 # Define the paths
-moduleDir <- file.path("C:/Users/Bauduin/Documents/GitHub/appendix_lynxIBM/module")
+moduleDir <- file.path("appendix_lynxIBM/module")
 inputDir <- file.path(moduleDir, "inputs") %>% reproducible::checkPath(create = TRUE)
 outputDir <- file.path(moduleDir, "outputs")
 cacheDir <- file.path(outputDir, "cache")
@@ -41,14 +41,14 @@ parameters <- list(
 
 # Input files
 # Habitat quality raster
-habMapSpaDES <- raster("C:/Users/Bauduin/Documents/GitHub/appendix_lynxIBM/module/inputs/habMap.tif")
+habMapSpaDES <- raster("appendix_lynxIBM/module/inputs/habMap.tif")
 # Collision probabilities raster
-collProbSpaDES <- raster("C:/Users/Bauduin/Documents/GitHub/appendix_lynxIBM/module/inputs/collProb.tif") 
+collProbSpaDES <- raster("appendix_lynxIBM/module/inputs/collProb.tif") 
 # List of 600 different initial population (SpatialPointsDataFrame)
-load("C:/Users/Bauduin/Documents/GitHub/appendix_lynxIBM/module/inputs/listLynxInitPop.RData") 
+load("appendix_lynxIBM/module/inputs/listLynxInitPop.RData") 
 popInitSpaDES <- listLynxInitPop[[sample(1:length(listLynxInitPop), 1)]] # sample one initial population
 # Population areas raster
-fourPopSpaDES <- raster("C:/Users/Bauduin/Documents/GitHub/appendix_lynxIBM/module/inputs/fourPop.tif") 
+fourPopSpaDES <- raster("appendix_lynxIBM/module/inputs/fourPop.tif") 
 
 modules <- list("lynxIBM")
 objects = c("habMapSpaDES", "collProbSpaDES", "popInitSpaDES", "fourPopSpaDES")
@@ -67,7 +67,7 @@ lynxIBMinit <- simInit(times = times, params = list(lynxIBM = parameters), modul
 lynxIBMrun <- spades(lynxIBMinit, debug = TRUE)
 
 # Save the simulation output
-save(mySimOut, file = paste0("C:/Users/Bauduin/Documents/GitHub/appendix_lynxIBM/module/outputs/lynxIBMrun_", sample(1:100000,1), ".RData"))
+save(mySimOut, file = paste0("appendix_lynxIBM/module/outputs/lynxIBMrun_", sample(1:100000,1), ".RData"))
 
 ```
 
