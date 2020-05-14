@@ -95,7 +95,7 @@ mapLynxAbundRas[] <- of(world = mapLynxAbund, agents = patches(mapLynxAbund)) / 
 mapLynxAbund100km2 <- aggregate(mapLynxAbundRas, fact = 10, fun = sum)
 # Give NA where there were no lynx simulated
 mapLynxAbund100km2[mapLynxAbund100km2 == 0] <- NA
-# Plot the density with th country borders
+# Plot the density with the country borders
 plot(mapLynxAbund100km2)
 pays <- shapefile("appendix_lynxIBM/module/inputs/countryBorders.shp")
 plot(pays, add = TRUE)
@@ -224,30 +224,36 @@ dispMoveMapRas <- raster("appendix_lynxIBM/module/inputs/habMap.tif")
 dispMoveMapRas[] <- of(world = dispMoveMap, agents = patches(dispMoveMap)) / nSim
 # Give NA where there were no lynx simulated
 dispMoveMapRas[dispMoveMapRas == 0] <- NA
-# Plot the disperser movement with th country borders
+# Plot the disperser movement with the country borders
 plot(dispMoveMapRas)
 plot(pays, add = TRUE)
 
-# Add GPS tracks
-lynxA <- shapefile("lynxA.shp")
-lynxB <- shapefile("lynxB.shp")
-lynxC <- shapefile("lynxC.shp")
-# Convert the coordinate system into the one of the map and format the dates
-lynxATr <- spTransform(lynxA[c(2:301,309:3317),], dispMoveMapRas@crs) # remove wrong points
-lynxATr@data$dateHr <- as.POSIXct(paste(lynxATr@data$Date__, lynxATr@data$Time__Loca), format="%Y/%m/%d %H:%M:%S")
-lynxBTr <- spTransform(lynxB, dispMoveMapRas@crs)
-lynxBTr@data$dateHr <- as.POSIXct(paste(lynxBTr@data$Date__, lynxBTr@data$Time__Loca), format="%Y/%m/%d %H:%M:%S")
-lynxCTr <- spTransform(lynxC, dispMoveMapRas@crs)
-lynxCTr@data$dateHr <- as.POSIXct(paste(lynxCTr@data$Date__, lynxCTr@data$Time__Loca), format="%Y/%m/%d %H:%M:%S")
-# Tranform the point locations into trajectory lines
-lynxALines <- SpatialLines(list(Lines(list(Line(lynxATr@coords[order(lynxATr@data$dateH),])), ID = "lynxA")), 
-                           proj4string = lynxATr@proj4string)
-lynxBLines <- SpatialLines(list(Lines(list(Line(lynxBTr@coords[order(lynxBTr@data$dateH),])), ID = "lynxB")), 
-                          proj4string = lynxBTr@proj4string)
-lynxCLines <- SpatialLines(list(Lines(list(Line(lynxCTr@coords[order(lynxCTr@data$dateH),])), ID = "lynxA")), 
-                          proj4string = lynxATr@proj4string)
 
-# Add the trajectories on the map
-plot(lynxALines, col = "red", add = TRUE, lwd = 2)
-plot(lynxBLines, col = "blue", add = TRUE, lwd = 2)
-plot(lynxCLines, col = "green", add = TRUE, lwd = 2)
+#########################
+## Territory occupancy ##
+#########################
+# Load a map from any simulation to have the study area
+load(paste0(pathFiles, "/", listSim[1]))
+terrOccMap <- NLset(world = lynxIBMrun$outputTerrMap[[1]], agents = patches(lynxIBMrun$outputTerrMap[[1]]), val = 0)  # empty a map
+
+for(i in 1:length(listSim)){ # for each simulation run
+  load(paste0(pathFiles, "/", listSim[i]))
+  terrOccMapSim <- lynxIBMrun$outputTerrMap[[lastYear]]
+  valTerrOccMapSim <- of(world = terrOccMapSim, agents = patches(terrOccMapSim))
+  # Transform the value of the territories into 0 and 1 for presence or abscence of a territory
+  valTerrOccMapSim[!is.na(valTerrOccMapSim)] <- 1
+  valTerrOccMapSim[is.na(valTerrOccMapSim)] <- 0
+  terrOccMap <- NLset(world = terrOccMap, agents = patches(terrOccMap),
+                      val = of(world = terrOccMap, agents = patches(terrOccMap)) + valTerrOccMapSim)
+  print(i)
+}
+
+# Transfer the data from the worldMatrix map to a raster format
+terrOccMapRas <- raster("appendix_lynxIBM/module/inputs/habMap.tif")
+# Rescale the value to obtain a mean over all simulations
+terrOccMapRas[] <- of(world = terrOccMap, agents = patches(terrOccMap)) / nSim
+# Give NA where there were no female lynx territory simulated
+terrOccMapRas[terrOccMapRas == 0] <- NA
+# Plot the territory occupancy with the country borders
+plot(terrOccMapRas)
+plot(pays, add = TRUE)

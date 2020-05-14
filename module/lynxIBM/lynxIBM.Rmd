@@ -44,7 +44,7 @@ parameters <- list(
 habMapSpaDES <- raster("appendix_lynxIBM/module/inputs/habMap.tif")
 # Collision probabilities raster
 collProbSpaDES <- raster("appendix_lynxIBM/module/inputs/collProb.tif") 
-# List of 600 different initial population (SpatialPointsDataFrame)
+# List of 1000 different initial population (SpatialPointsDataFrame)
 load("appendix_lynxIBM/module/inputs/listLynxInitPop.RData") 
 popInitSpaDES <- listLynxInitPop[[sample(1:length(listLynxInitPop), 1)]] # sample one initial population
 # Population areas raster
