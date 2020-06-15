@@ -172,7 +172,7 @@ colnames(movePopLongDTSum2)[2] <- "Populations"
 movePopLongDTSum2[movePopLongDTSum2$Populations == "AtoJ", "Populations"] <- "Alps to Jura"
 movePopLongDTSum2[movePopLongDTSum2$Populations == "AtoVP", "Populations"] <- "Alps to Vosges-Palatinate"
 movePopLongDTSum2[movePopLongDTSum2$Populations == "AtoBF", "Populations"] <- "Alps to Black Forest"
-movePopLongDTSum2[movePopLongDTSum2$Populations == "JtoA", "Populations"] <- "Jura to Alp"
+movePopLongDTSum2[movePopLongDTSum2$Populations == "JtoA", "Populations"] <- "Jura to Alps"
 movePopLongDTSum2[movePopLongDTSum2$Populations == "JtoVP", "Populations"] <- "Jura to Vosges-Palatinate"
 movePopLongDTSum2[movePopLongDTSum2$Populations == "JtoBF", "Populations"] <- "Jura to Black Forest"
 movePopLongDTSum2[movePopLongDTSum2$Populations == "VPtoA", "Populations"] <- "Vosges-Palatinate to Alps"
@@ -190,10 +190,10 @@ movePopLongDTSum2$Populations <- factor(movePopLongDTSum2$Populations, levels =c
 ))
 
 # Plot
-colRainbow <- rainbow_hcl(n=9, c = 130, l=70)
+colRainbow <- rainbow_hcl(n = length(unique(movePopLongDTSum2$Populations)), c = 130, l = 70)
 
-ggplot(movePopLongDTSum2, aes(x=year, y=Cum.Sum, colour=Populations)) + 
-  geom_ribbon(aes(ymin=Cum.Sum-ci, ymax=Cum.Sum+ci, x=year, fill=Populations),alpha = 0.3) +
+ggplot(movePopLongDTSum2, aes(x = year, y = Cum.Sum, colour = Populations)) + 
+  geom_ribbon(aes(ymin = Cum.Sum-ci, ymax = Cum.Sum+ci, x = year, fill = Populations), alpha = 0.3) +
   geom_line() +
   geom_point() +
   #ggtitle("Movements between populations") +
