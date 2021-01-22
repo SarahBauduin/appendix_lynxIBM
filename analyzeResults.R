@@ -106,16 +106,16 @@ plot(pays, add = TRUE)
 ############################################
 # Calculate the movement between population
 # when an individual become resident in another population that the one is was born in
-movePop <- cbind(repSim = rep(1:nSim, each = lastYear+1), year = rep(1:(lastYear+1), nSim), 
-                 AtoJ = rep(0, (lastYear+1)*nSim), AtoBF = rep(0, (lastYear+1)*nSim), AtoVP = rep(0, (lastYear+1)*nSim),
-                 JtoA = rep(0, (lastYear+1)*nSim), JtoBF = rep(0, (lastYear+1)*nSim), JtoVP = rep(0, (lastYear+1)*nSim),
-                 BFtoA = rep(0, (lastYear+1)*nSim), BFtoJ = rep(0, (lastYear+1)*nSim), BFtoVP = rep(0, (lastYear+1)*nSim),
-                 VPtoA = rep(0, (lastYear+1)*nSim), VPtoJ = rep(0, (lastYear+1)*nSim), VPtoBF = rep(0, (lastYear+1)*nSim))
+movePop <- cbind(repSim = rep(1:nSim, each = lastYear), year = rep(1:lastYear, nSim), 
+                 AtoJ = rep(0, lastYear*nSim), AtoBF = rep(0, lastYear*nSim), AtoVP = rep(0, lastYear*nSim),
+                 JtoA = rep(0, lastYear*nSim), JtoBF = rep(0, lastYear*nSim), JtoVP = rep(0, lastYear*nSim),
+                 BFtoA = rep(0, lastYear*nSim), BFtoJ = rep(0, lastYear*nSim), BFtoVP = rep(0, lastYear*nSim),
+                 VPtoA = rep(0, lastYear*nSim), VPtoJ = rep(0, lastYear*nSim), VPtoBF = rep(0, lastYear*nSim))
 
 for(i in 1:length(listSim)){ # for each simulation run
   load(paste0(pathFiles, "/", listSim[i]))
   
-  for(y in 1:(lastYear+1)){
+  for(y in 1:lastYear){
     
     # Identify the residents in the different populations
     resAlps <- turtlesOn(world = lynxIBMrun$popDist, turtles = lynxIBMrun$resLynx[[y]],
@@ -164,8 +164,8 @@ movePopLongDT[, Cum.Sum := cumsum(value), by=list(repSim, variable)]
 # Calculte the mean and 95% confidence intervals per year and per variable
 movePopLongDTSum <- summarySE(as.data.frame(movePopLongDT), measurevar = "Cum.Sum", groupvars = c("year","variable"))
 # Remove the variable where there was no movement simulated between the two population
-movePopLongDTSum2 <- movePopLongDTSum[movePopLongDTSum$variable %in% movePopLongDTSum[movePopLongDTSum$year == (lastYear+1)
-                                                                                      & movePopLongDTSum$Cum.Sum !=0,"variable"],]
+movePopLongDTSum2 <- movePopLongDTSum[movePopLongDTSum$variable %in% movePopLongDTSum[movePopLongDTSum$year == lastYear
+                                                                                      & movePopLongDTSum$Cum.Sum >= 0.05,"variable"],]
 movePopLongDTSum2$variable <- as.character(movePopLongDTSum2$variable)
 # Rename the variable to display in the legend of the plot
 colnames(movePopLongDTSum2)[2] <- "Populations"
@@ -184,7 +184,7 @@ movePopLongDTSum2[movePopLongDTSum2$Populations == "BFtoVP", "Populations"] <- "
 # Organize the factor into orders
 movePopLongDTSum2$Populations <- factor(movePopLongDTSum2$Populations, levels =c(
   "Alps to Jura","Alps to Vosges-Palatinate","Alps to Black Forest",
-  "Jura to Alp","Jura to Vosges-Palatinate","Jura to Black Forest",
+  "Jura to Alps","Jura to Vosges-Palatinate","Jura to Black Forest",
   "Vosges-Palatinate to Alps","Vosges-Palatinate to Jura","Vosges-Palatinate to Black Forest",
   "Black Forest to Alps","Black Forest to Jura","Black Forest to Vosges-Palatinate"
 ))
@@ -201,32 +201,6 @@ ggplot(movePopLongDTSum2, aes(x = year, y = Cum.Sum, colour = Populations)) +
   scale_color_manual(values = colRainbow) +
   scale_fill_manual(values = colRainbow) +
   annotate("rect", xmin = -Inf, xmax = 10, ymin = -Inf, ymax = Inf, alpha = .7)
-
-
-#########################################
-## Dispersal movement on the landscape ##
-#########################################
-# Load a map from any simulation to have the study area
-load(paste0(pathFiles, "/", listSim[1]))
-dispMoveMap <- NLset(world = lynxIBMrun$connectivityMap, agents = patches(lynxIBMrun$connectivityMap), val = 0) # empty a map
-
-for(i in 1:length(listSim)){ # for each simulation run
-  load(paste0(pathFiles, "/", listSim[i]))
-  dispMoveMap <- NLset(world = dispMoveMap, agents = patches(dispMoveMap),
-                       val = of(world = dispMoveMap, agents = patches(dispMoveMap)) + 
-                         of(world = lynxIBMrun$connectivityMap, agents = patches(lynxIBMrun$connectivityMap)))
-  print(i)
-}
-
-# Transfer the data from the worldMatrix map to a raster format
-dispMoveMapRas <- raster("appendix_lynxIBM/module/inputs/habMap.tif")
-# Rescale the value to obtain a mean over all simulations
-dispMoveMapRas[] <- of(world = dispMoveMap, agents = patches(dispMoveMap)) / nSim
-# Give NA where there were no lynx simulated
-dispMoveMapRas[dispMoveMapRas == 0] <- NA
-# Plot the disperser movement with the country borders
-plot(dispMoveMapRas)
-plot(pays, add = TRUE)
 
 
 #########################
@@ -257,3 +231,4 @@ terrOccMapRas[terrOccMapRas == 0] <- NA
 # Plot the territory occupancy with the country borders
 plot(terrOccMapRas)
 plot(pays, add = TRUE)
+
