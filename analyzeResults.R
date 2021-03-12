@@ -22,9 +22,9 @@ gg_color <- function(n) {
 }
 
 
-#######################
-## Populations sizes ##
-#######################
+#############################
+## Population growth rates ##
+#############################
 # Prepare the table to store the individuals per population
 popAlps <- cbind(repSim = rep(1:nSim, each = lastYear+1), year = rep(1:(lastYear+1), nSim), 
                  nInd = rep(0, (lastYear+1)*nSim))
@@ -57,18 +57,27 @@ for(i in 1:length(listSim)){ # for each simulation run
 
 allPop <- rbind(cbind.data.frame(popAlps, pop = "Alps"), cbind.data.frame(popJura, pop = "Jura"),
                 cbind.data.frame(popVP, pop = "Vosges-Palatinate"), cbind.data.frame(popBF, pop = "Black Forest"))
-# Calculate the mean and 95% confidence intervals of the number of individuals per year and per population
-allPopSum <- summarySE(allPop, measurevar="nInd", groupvars=c("year","pop"))
+
+# Calculate the growth rate
+nInt_tMinus1 <- allPop$nInd
+nInt_tMinus1 <- c(NA, nInt_tMinus1[1:length(nInt_tMinus1) - 1])
+# Replace all nInt_tMinus1 by NA for year 1
+allPop <- cbind(allPop, nInt_tMinus1)
+allPop[allPop$year == 1, "nInt_tMinus1"] <- NA
+allPop$r <- allPop$nInd / allPop$nInt_tMinus1
+allPop[is.infinite(allPop$r), "r"] <- NA
+
+# Calculate the mean and 95% confidence intervals of the growth rates per year and per population
+allPopSum <- summarySE(allPop, measurevar = "r", groupvars = c("year", "pop"), na.rm = TRUE)
 
 # Plot
 colnames(allPopSum)[2] <- "Populations"
-ggplot(allPopSum, aes(x=year, y=nInd, colour=Populations)) + 
-  geom_ribbon(aes(ymin=nInd-ci, ymax=nInd+ci, x=year, fill=Populations),alpha = 0.3) +
+ggplot(allPopSum, aes(x=year, y=r, colour=Populations)) + 
+  geom_ribbon(aes(ymin=r-ci, ymax=r+ci, x=year, fill=Populations),alpha = 0.3) +
   geom_line() +
   geom_point() +
-  #ggtitle("Number of individuals") +
   annotate("rect", xmin = -Inf, xmax = 10, ymin = -Inf, ymax = Inf, alpha = .7) +
-  labs(x ="Years simulated", y = "Number of individuals")
+  labs(x ="Years simulated", y = "Population growth rates")
 
 
 ##################
@@ -196,7 +205,6 @@ ggplot(movePopLongDTSum2, aes(x = year, y = Cum.Sum, colour = Populations)) +
   geom_ribbon(aes(ymin = Cum.Sum-ci, ymax = Cum.Sum+ci, x = year, fill = Populations), alpha = 0.3) +
   geom_line() +
   geom_point() +
-  #ggtitle("Movements between populations") +
   labs(x= "Years simulated", y = "Cumulative sum of movements between populations", color = "Populations") +
   scale_color_manual(values = colRainbow) +
   scale_fill_manual(values = colRainbow) +
