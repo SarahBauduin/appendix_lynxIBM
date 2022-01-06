@@ -1,35 +1,21 @@
 ---
 title: "lynxIBM"
-author: ""
-date: "27 avril 2020"
 output: pdf_document
 ---
-
-# Overview
-
-Provide an overview of what the module does / how to use the module.
-
-Module documentation should be written so that others can use your module.
-This is a template for module documentation, and should be changed to reflect your module.
-
-## R Markdown
-
-R Markdown syntax allows R code, outputs, and figures to be rendered in the documentation.
-
-For help writing in R Markdown, see http://rmarkdown.rstudio.com/.
-
-# Usage
 
 ```{r module_usage}
 library(igraph)
 library(SpaDES.core)
 library(raster)
 
+# Where is located your appendix_lynxIBM repo
+pathRepo <- "C:/Users/Bauduin/Documents/GitHub/" # change to your path
+
 # Define the paths
-moduleDir <- file.path("appendix_lynxIBM/module")
-inputDir <- file.path(moduleDir, "inputs") %>% reproducible::checkPath(create = TRUE)
-outputDir <- file.path(moduleDir, "outputs")
-cacheDir <- file.path(outputDir, "cache")
+moduleDir <- file.path(paste0(pathRepo, "appendix_lynxIBM/module"))
+inputDir <- file.path(paste0(pathRepo, moduleDir, "inputs")) %>% reproducible::checkPath(create = TRUE)
+outputDir <- file.path(paste0(pathRepo, moduleDir, "outputs"))
+cacheDir <- file.path(paste0(pathRepo, outputDir, "cache"))
 
 # Module parameters
 times <- list(start = 1, end = 51) # to run 50 years
@@ -41,14 +27,14 @@ parameters <- list(
 
 # Input files
 # Habitat quality raster
-habMapSpaDES <- raster("appendix_lynxIBM/module/inputs/habMap.tif")
+habMapSpaDES <- raster(paste0(pathRepo, "appendix_lynxIBM/module/inputs/habMap.tif"))
 # Collision probabilities raster
-collProbSpaDES <- raster("appendix_lynxIBM/module/inputs/collProb.tif") 
+collProbSpaDES <- raster(paste0(pathRepo, "appendix_lynxIBM/module/inputs/collProb.tif"))
 # List of 500 different initial population (SpatialPointsDataFrame)
-load("appendix_lynxIBM/module/inputs/listLynxInitPop.RData") 
+load(paste0(pathRepo, "appendix_lynxIBM/module/inputs/listLynxInitPop.RData"))
 popInitSpaDES <- listLynxInitPop[[sample(1:length(listLynxInitPop), 1)]] # sample one initial population
 # Population areas raster
-fourPopSpaDES <- raster("appendix_lynxIBM/module/inputs/fourPop.tif") 
+fourPopSpaDES <- raster(paste0(pathRepo, "appendix_lynxIBM/module/inputs/fourPop.tif"))
 
 modules <- list("lynxIBM")
 objects = c("habMapSpaDES", "collProbSpaDES", "popInitSpaDES", "fourPopSpaDES")
@@ -67,33 +53,7 @@ lynxIBMinit <- simInit(times = times, params = list(lynxIBM = parameters), modul
 lynxIBMrun <- spades(lynxIBMinit, debug = TRUE)
 
 # Save the simulation output
-save(mySimOut, file = paste0("appendix_lynxIBM/module/outputs/lynxIBMrun_", sample(1:100000,1), ".RData"))
+save(mySimOut, file = paste0(pathRepo, "appendix_lynxIBM/module/outputs/lynxIBMrun_", sample(1:100000,1), ".RData"))
 
 ```
 
-# Events
-
-Describe what happens for each event type.
-
-## Plotting
-
-Write what is plotted.
-
-## Saving
-
-Write what is saved.
-
-# Data dependencies
-
-## Input data
-
-How to obtain input data, and a description of the data required by the module.
-If `sourceURL` is specified, `downloadData("lynxIBM", "path/to/modules/dir")` may be sufficient.
-
-## Output data
-
-Description of the module outputs.
-
-# Links to other modules
-
-Describe any anticipated linkages to other modules.

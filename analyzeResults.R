@@ -89,7 +89,10 @@ mapLynxAbund <- NLset(world = lynxIBMrun$habitatMap, agents = patches(lynxIBMrun
 
 for(i in 1:length(listSim)){ # for each simulation run
   load(paste0(pathFiles, "/", listSim[i]))
-  patchesLynx <- patchHere(world = lynxIBMrun$habitatMap, turtles = lynxIBMrun$outputLynx[[lastYear]]) # retrieve the occupied cells
+  # Select adult resident lynx
+  resLynx <- NLwith(agents = lynxIBMrun$outputLynx[[lastYear]], var = "status", val = "res") # residents lynx
+  resAdults <- NLwith(agents = resLynx, var = "age", val = 1:20) # adult are between 1 year old (2nd year of life, not kitten of the year) and 20 years (oldest age possible)
+  patchesLynx <- patchHere(world = lynxIBMrun$habitatMap, turtles = resAdults) # retrieve the occupied cells
   patchesLynxCnt <- ddply(as.data.frame(patchesLynx),. (pxcor, pycor), nrow)
   mapLynxAbund <- NLset(world = mapLynxAbund, agents = cbind(pxcor = patchesLynxCnt$pxcor, pycor = patchesLynxCnt$pycor),
                         val = of(world = mapLynxAbund, agents = cbind(pxcor = patchesLynxCnt$pxcor, pycor = patchesLynxCnt$pycor)) + patchesLynxCnt$V1)
@@ -110,9 +113,9 @@ pays <- shapefile("appendix_lynxIBM/module/inputs/countryBorders.shp")
 plot(pays, add = TRUE)
 
 
-############################################
-## Dispersal movement between populations ##
-############################################
+############################################################
+## Movement from native population to establish elsewhere ##
+############################################################
 # Calculate the movement between population
 # when an individual become resident in another population that the one is was born in
 movePop <- cbind(repSim = rep(1:nSim, each = lastYear), year = rep(1:lastYear, nSim), 
@@ -205,7 +208,7 @@ ggplot(movePopLongDTSum2, aes(x = year, y = Cum.Sum, colour = Populations)) +
   geom_ribbon(aes(ymin = Cum.Sum-ci, ymax = Cum.Sum+ci, x = year, fill = Populations), alpha = 0.3) +
   geom_line() +
   geom_point() +
-  labs(x= "Years simulated", y = "Cumulative sum of movements between populations", color = "Populations") +
+  labs(x= "Years simulated", y = "Cumulative sum of established individuals in their non-native population", color = "Populations") +
   scale_color_manual(values = colRainbow) +
   scale_fill_manual(values = colRainbow) +
   annotate("rect", xmin = -Inf, xmax = 10, ymin = -Inf, ymax = Inf, alpha = .7)
