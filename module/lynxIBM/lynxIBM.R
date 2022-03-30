@@ -283,6 +283,7 @@ initSim <- function(sim) {
   sim$deadLynxColl <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # dead lynx by collisions each year
   sim$deadLynxNoColl <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # dead lynx other than by collision each year
   sim$resLynx <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # individuals becoming resident each year
+  sim$deadDisp <- data.frame(nDisp = numeric(), nDispDeadColl = numeric(), nDispDeadDaily = numeric(), time = numeric()) # how many lynx died during dispersal
   
   return(invisible(sim))
 }
@@ -500,6 +501,7 @@ dispersal <- function(sim) {
   nDisp <- NLcount(disperser)
   nonDisperser <- other(agents = sim$lynx, except = disperser)
   nonDisperserID <- nonDisperser@.Data[, "who"]
+  sim$deadDisp <- rbind(sim$deadDisp, data.frame(nDisp = nDisp, nDispDeadColl = 0, nDispDeadDaily = 0, time = floor(time(sim))[1]))
   
   if(nDisp != 0) {
     
@@ -789,6 +791,7 @@ dispersal <- function(sim) {
           }
           dispersingInd <- die(turtles = dispersingInd, who = deadWhoRoad)
           sim$aliveDispersingIndID <- dispersingInd@.Data[, "who"]
+          sim$deadDisp[sim$deadDisp$time == floor(time(sim))[1], "nDispDeadColl"] <- sim$deadDisp[sim$deadDisp$time == floor(time(sim))[1], "nDispDeadColl"] + length(deadWhoRoad)
           
           # Territory search
           disperser <- turtleSet(dispersingInd, nonDispersingInd)
@@ -885,6 +888,7 @@ dispersal <- function(sim) {
         sim$deadLynxNoColl[[time(sim, "year")[1]]] <- turtleSet(sim$deadLynxNoColl[[time(sim, "year")[1]]], turtle(turtles = disperser, who = deadWhoDaily)) # add the new lynx dead by other than by collisions
       }
       disperser <- die(turtles = disperser, who = deadWhoDaily)
+      sim$deadDisp[sim$deadDisp$time == floor(time(sim))[1], "nDispDeadDaily"] <- length(deadWhoDaily)
       
       # Test
       if(P(sim)$testON == TRUE) {
