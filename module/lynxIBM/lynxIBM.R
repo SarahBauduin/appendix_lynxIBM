@@ -43,6 +43,8 @@ defineModule(sim, list(
     defineParameter("pMortDispJura", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura"),
     defineParameter("pMortDispVosgesPalatinate", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate"),
     defineParameter("pMortDispBlackForest", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest"),
+    defineParameter("corrFactorRes", "numeric", 2000, NA, NA, "Correction factor for road mortality risk for residents"),
+    defineParameter("corrFactorDisp", "numeric", 6250, NA, NA, "Correction factor for road mortality risk for dispersers"),
     defineParameter("nMatMax", "numeric", 10, NA, NA, "Maximum number of consecutive steps within which the individual needs to find dispsersal habitat"),
     defineParameter("coreTerrSizeFAlps", "numeric", 43.5, NA, NA, "Core size for a female territory (km2) in the Alps"),
     defineParameter("coreTerrSizeFJura", "numeric", 73, NA, NA, "Core size for a female territory (km2) in the Jura"),
@@ -413,7 +415,8 @@ mortality <- function(sim) {
       infoRes[infoRes[,"who"] %in% infoRes[,"maleID"], "rdMortTerr"] <-
         aggregate(infoRes[, "rdMortTerr"], list(infoRes[,"maleID"]), mean)[, "x"]
     }
-    deathResRd <- rbinom(n = nRes, size = 1, prob = infoRes[, "rdMortTerr"])
+    # Add the correction factor for the residents
+    deathResRd <- rbinom(n = nRes, size = 1, prob = (infoRes[, "rdMortTerr"]) * P(sim)$corrFactorRes)
     sim$nColl <- rbind(sim$nColl, data.frame(ncoll = sum(deathResRd), time = floor(time(sim))[1]))
     
     # Resident individuals that will die
@@ -776,7 +779,8 @@ dispersal <- function(sim) {
           
           # Spatial mortality influenced by roads
           roadMort <- of(world = sim$roadMortMap, agents = chosenCellsCoords)
-          deathRoad <- rbinom(n = length(roadMort), size = 1, prob = roadMort)
+          # Add the correction factor for the dispersers
+          deathRoad <- rbinom(n = length(roadMort), size = 1, prob = (roadMort * P(sim)$corrFactorDisp))
           # Do not kill the dispersers the first year of simulation
           # because all individuals from the initial population are dispersers
           if(floor(time(sim))[1] == start(sim, "year")[1]){
