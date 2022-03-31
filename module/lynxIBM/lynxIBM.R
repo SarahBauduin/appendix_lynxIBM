@@ -416,7 +416,7 @@ mortality <- function(sim) {
         aggregate(infoRes[, "rdMortTerr"], list(infoRes[,"maleID"]), mean)[, "x"]
     }
     # Add the correction factor for the residents
-    deathResRd <- rbinom(n = nRes, size = 1, prob = (infoRes[, "rdMortTerr"]) * P(sim)$corrFactorRes)
+    deathResRd <- rbinom(n = nRes, size = 1, prob = (infoRes[, "rdMortTerr"]) / P(sim)$corrFactorRes)
     sim$nColl <- rbind(sim$nColl, data.frame(ncoll = sum(deathResRd), time = floor(time(sim))[1]))
     
     # Resident individuals that will die
@@ -780,7 +780,7 @@ dispersal <- function(sim) {
           # Spatial mortality influenced by roads
           roadMort <- of(world = sim$roadMortMap, agents = chosenCellsCoords)
           # Add the correction factor for the dispersers
-          deathRoad <- rbinom(n = length(roadMort), size = 1, prob = (roadMort * P(sim)$corrFactorDisp))
+          deathRoad <- rbinom(n = length(roadMort), size = 1, prob = (roadMort / P(sim)$corrFactorDisp))
           # Do not kill the dispersers the first year of simulation
           # because all individuals from the initial population are dispersers
           if(floor(time(sim))[1] == start(sim, "year")[1]){

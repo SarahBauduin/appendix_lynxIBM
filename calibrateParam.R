@@ -5,6 +5,10 @@
 ## See the script lynxIBM.Rmd to run the model once
 ## without calibration
 
+library(igraph)
+library(SpaDES.core)
+library(raster)
+library(NetLogoR)
 
 # Try values for the parameters : corrFactorRes and corrFactorDisp
 # Run 50 replicates each time
@@ -25,16 +29,12 @@ mapFr_NLR <- createWorld(minPxcor = 1,
                           data = values(rasterFr))
 
 # First run
-corrFactorResVal <- rep(c(0, 500, 1000, 2000, 3000), each = 5)
+corrFactorResVal <- rep(c(1, 500, 1000, 2000, 3000), each = 5)
 corrFactorDispVal <- rep(c(3000, 5000, 6250, 7000, 8000), 5)
 # Model outputs to save
 out <- cbind.data.frame(corrFactorRes = c(), corrFactorDisp = c(), replicate = c(),
                         mortResColl = c(), mortResOther = c(), mortDispColl = c(), 
                         mortDispOther = c(), nCollFr = c())
-
-library(igraph)
-library(SpaDES.core)
-library(raster)
 
 for(i in 1:length(corrFactorResVal)){
   
