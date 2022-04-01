@@ -30,10 +30,10 @@ defineModule(sim, list(
     defineParameter("pKittyOldF", "numeric", c(0.5, 0.5), NA, NA, "Probabilities for old females to have nKittyOldF"),
     defineParameter("minAgeReproF", "numeric", 2, NA, NA, "Age minimum for females to reproduce"),
     defineParameter("minAgeReproM", "numeric", 3, NA, NA, "Age minimum for males to reproduce"),
-    defineParameter("pMortResAlps", "numeric", 0.1, NA, NA, "Fixed annual probability of mortality for residents in the Alps"),
-    defineParameter("pMortResJura", "numeric", 0.1, NA, NA, "Fixed annual probability of mortality for residents in the Jura"),
-    defineParameter("pMortResVosgesPalatinate", "numeric", 0.1, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate"),
-    defineParameter("pMortResBlackForest", "numeric", 0.1, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest"),
+    defineParameter("pMortResAlps", "numeric", 0.17, NA, NA, "Fixed annual probability of mortality for residents in the Alps"),
+    defineParameter("pMortResJura", "numeric", 0.17, NA, NA, "Fixed annual probability of mortality for residents in the Jura"),
+    defineParameter("pMortResVosgesPalatinate", "numeric", 0.17, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate"),
+    defineParameter("pMortResBlackForest", "numeric", 0.17, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest"),
     defineParameter("ageMax", "numeric", 20, NA, NA, "Age maximum individuals can be"),
     defineParameter("xPs", "numeric", 11, NA, NA, "Exponent of power function to define the daily step distribution"),
     defineParameter("sMaxPs", "numeric", 45, NA, NA, "Maximum number of intraday movement steps"),
@@ -43,8 +43,8 @@ defineModule(sim, list(
     defineParameter("pMortDispJura", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura"),
     defineParameter("pMortDispVosgesPalatinate", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate"),
     defineParameter("pMortDispBlackForest", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest"),
-    defineParameter("corrFactorRes", "numeric", 2000, NA, NA, "Correction factor for road mortality risk for residents"),
-    defineParameter("corrFactorDisp", "numeric", 6250, NA, NA, "Correction factor for road mortality risk for dispersers"),
+    defineParameter("corrFactorRes", "numeric", 8, NA, NA, "Correction factor for road mortality risk for residents"),
+    defineParameter("corrFactorDisp", "numeric", 3.5, NA, NA, "Correction factor for road mortality risk for dispersers"),
     defineParameter("nMatMax", "numeric", 10, NA, NA, "Maximum number of consecutive steps within which the individual needs to find dispsersal habitat"),
     defineParameter("coreTerrSizeFAlps", "numeric", 43.5, NA, NA, "Core size for a female territory (km2) in the Alps"),
     defineParameter("coreTerrSizeFJura", "numeric", 73, NA, NA, "Core size for a female territory (km2) in the Jura"),
@@ -411,12 +411,12 @@ mortality <- function(sim) {
     # Residents dying from spatial mortality dependent on the road density in their territory
     infoRes <- resident@.Data[, c("who", "maleID", "rdMortTerr"), drop = FALSE]
     # For males => mean value of the female territories they occupy
-    if(sum(is.na(infoRes[,"rdMortTerr"])) != 0) {
+    if(sum(is.na(infoRes[,"maleID"])) != 0) {
       infoRes[infoRes[,"who"] %in% infoRes[,"maleID"], "rdMortTerr"] <-
         aggregate(infoRes[, "rdMortTerr"], list(infoRes[,"maleID"]), mean)[, "x"]
     }
     # Add the correction factor for the residents
-    deathResRd <- rbinom(n = nRes, size = 1, prob = (infoRes[, "rdMortTerr"]) / P(sim)$corrFactorRes)
+    deathResRd <- rbinom(n = nRes, size = 1, prob = (infoRes[, "rdMortTerr"]) * P(sim)$corrFactorRes)
     sim$nColl <- rbind(sim$nColl, data.frame(ncoll = sum(deathResRd), time = floor(time(sim))[1]))
     
     # Resident individuals that will die
@@ -493,7 +493,7 @@ mortality <- function(sim) {
       expect_true(all(terrNumTerrMap[!is.na(terrNumTerrMap)] %in% terrNumLynx))
     }
   }
-  
+
   return(invisible(sim))
 }
 
