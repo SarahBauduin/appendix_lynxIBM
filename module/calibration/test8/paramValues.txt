@@ -2,15 +2,14 @@
     defineParameter("pMortResJura", "numeric", 0.19, NA, NA, "Fixed annual probability of mortality for residents in the Jura"),
     defineParameter("pMortResVosgesPalatinate", "numeric", 0.19, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate"),
     defineParameter("pMortResBlackForest", "numeric", 0.19, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest"),    defineParameter("pMortDispAlps", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps"),
-    defineParameter("pMortDispAlps", "numeric", 0.0035, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps"),
-    defineParameter("pMortDispJura", "numeric", 0.0035, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura"),
-    defineParameter("pMortDispVosgesPalatinate", "numeric", 0.0035, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate"),
-    defineParameter("pMortDispBlackForest", "numeric", 0.0035, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest"),
+    defineParameter("pMortDispAlps", "numeric", 0.004, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps"),
+    defineParameter("pMortDispJura", "numeric", 0.004, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura"),
+    defineParameter("pMortDispVosgesPalatinate", "numeric", 0.004, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate"),
+    defineParameter("pMortDispBlackForest", "numeric", 0.004, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest"),
     defineParameter("corrFactorRes", "numeric", 15, NA, NA, "Correction factor for road mortality risk for residents"),
-    defineParameter("corrFactorDisp", "numeric", 6, NA, NA, "Correction factor for road mortality risk for dispersers"),
+    defineParameter("corrFactorDisp", "numeric", 5, NA, NA, "Correction factor for road mortality risk for dispersers"),
 
-  rCollDisp    rCollRes rNoCollDisp  rNoCollRes 
- 0.24720025  0.09461723  0.20054488  0.16379745
+
 
 
 Reference values:
