@@ -248,15 +248,13 @@ plot(pays, add = TRUE)
 ## Summary metrics ##
 #####################
 
-# Realized mortality rates
-# for males and females
-# for residents and dispersers
-# for each population
-# by collision or otherwise
-
+# Realized mortality rates for residents and dispersers by collision or otherwise
 deathLynx <- cbind(repSim = rep(1:nSim, each = lastYear), year = rep(1:(lastYear), nSim), 
                    rCollDisp = rep(0, (lastYear)*nSim), rCollRes = rep(0, (lastYear)*nSim), 
                    rNoCollDisp = rep(0, (lastYear)*nSim), rNoCollRes = rep(0, (lastYear)*nSim))
+
+# Age at which individuals died
+ageDeath <- c()
 
 for(i in 1:length(listSim)){ # for each simulation run
   load(paste0(pathFiles, "/", listSim[i]))
@@ -264,26 +262,44 @@ for(i in 1:length(listSim)){ # for each simulation run
   for(y in 1:(lastYear)){
     
     # Collisions - Dispersers
-    nCollDisp <- NLcount(agents = NLwith(agents = lynxIBMrun$deadLynxColl[[y]],
-                                                             var = "status", val = "disp"))
+    lynxDispColl <- NLwith(agents = lynxIBMrun$deadLynxColl[[y]], var = "status", val = "disp")
+    nCollDisp <- NLcount(agents = lynxDispColl)
+    ageDeath <- c(ageDeath, of(agents = lynxDispColl, var = "age"))
+    
     # Deaths other than by collisions - Dispersers
-    nNoCollDisp <- NLcount(agents = NLwith(agents = lynxIBMrun$deadLynxNoColl[[y]],
-                                                               var = "status", val = "disp"))
+    lynxDispNoColl <- NLwith(agents = lynxIBMrun$deadLynxNoColl[[y]], var = "status", val = "disp")
+    nNoCollDisp <- NLcount(agents = lynxDispNoColl)
+    ageDeath <- c(ageDeath, of(agents = lynxDispNoColl, var = "age"))
     
     # Collisions - Residents
-    lynxColl <- NLwith(agents = lynxIBMrun$deadLynxColl[[y]], var = "status", val = "res")
+    lynxResColl <- NLwith(agents = lynxIBMrun$deadLynxColl[[y]], var = "status", val = "res")
     # Deaths other than by collisions - Residents
-    lynxNoColl <- NLwith(agents = lynxIBMrun$deadLynxNoColl[[y]], var = "status", val = "res")
+    lynxResNoColl <- NLwith(agents = lynxIBMrun$deadLynxNoColl[[y]], var = "status", val = "res")
     # For the residents, some may have die from both sources, so assign randomly one mortality
-    if(NLcount(agents = lynxColl) > 0 & NLcount(agents = lynxNoColl) > 0){
-      lynxBoth <- length(intersect(of(agents = lynxColl, var = "who"), of(agents = lynxNoColl, var = "who")))
-      randomColl <- rbinom(n = 1, size = lynxBoth, prob = 0.5)
-      nCollRes <- NLcount(agents = lynxColl) - lynxBoth + randomColl
-      nNoCollRes <- NLcount(agents = lynxNoColl) - lynxBoth + (lynxBoth - randomColl)
-    } else {
-      nCollRes <- NLcount(agents = lynxColl)
-      nNoCollRes <- NLcount(agents = lynxNoColl)
-    }
+    if(NLcount(agents = lynxResColl) > 0 & NLcount(agents = lynxResNoColl) > 0){
+      lynxBoth <- intersect(of(agents = lynxResColl, var = "who"), of(agents = lynxResNoColl, var = "who"))
+      
+      if(length(lynxBoth) > 0){
+        randomColl <- rbinom(n = length(lynxBoth), size = 1, prob = 0.5)
+        
+        lynxResColl <- NLwith(agents = lynxResColl, var = "who", 
+                              val = of(agents = lynxResColl, var = "who")[!of(agents = lynxResColl, var = "who") %in% lynxBoth[which(randomColl == 0)]])
+        nCollRes <- NLcount(agents = lynxResColl)
+        ageDeath <- c(ageDeath, of(agents = lynxResColl, var = "age"))
+        
+        lynxResNoColl <- NLwith(agents = lynxResNoColl, var = "who", 
+                              val = of(agents = lynxResNoColl, var = "who")[!of(agents = lynxResNoColl, var = "who") %in% lynxBoth[which(randomColl == 1)]])
+        nNoCollRes <- NLcount(agents = lynxResNoColl)
+        ageDeath <- c(ageDeath, of(agents = lynxResNoColl, var = "age"))
+        
+      } else {
+        nCollRes <- NLcount(agents = lynxResColl)
+        nNoCollRes <- NLcount(agents = lynxResNoColl)
+        
+        ageDeath <- c(ageDeath, of(agents = lynxResColl, var = "age"))
+        ageDeath <- c(ageDeath, of(agents = nNoCollRes, var = "age"))
+      }
+     }
 
     # Number of individuals at the beginning of the yearly time step
     nDisp <- NLcount(agents = NLwith(agents = lynxIBMrun$outputLynx[[y]],
@@ -308,3 +324,7 @@ for(i in 1:length(listSim)){ # for each simulation run
 colMeans(deathLynx[deathLynx[,"year"] %in% 6:50, 3:6], na.rm = TRUE)
 # Standard deviation
 apply(deathLynx[deathLynx[,"year"] %in% 6:50, 3:6], 2, sd)
+
+# Age at death summary
+summary(ageDeath)
+barplot(table(ageDeath), xlab = "Age", main = "Age at death")
