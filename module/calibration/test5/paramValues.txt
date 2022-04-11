@@ -1,0 +1,44 @@
+    defineParameter("pMortResAlps", "numeric", 0.18, NA, NA, "Fixed annual probability of mortality for residents in the Alps"),
+    defineParameter("pMortResJura", "numeric", 0.18, NA, NA, "Fixed annual probability of mortality for residents in the Jura"),
+    defineParameter("pMortResVosgesPalatinate", "numeric", 0.18, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate"),
+    defineParameter("pMortResBlackForest", "numeric", 0.18, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest"),    defineParameter("pMortDispAlps", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps"),
+    defineParameter("pMortDispAlps", "numeric", 0.0027, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps"),
+    defineParameter("pMortDispJura", "numeric", 0.0027, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura"),
+    defineParameter("pMortDispVosgesPalatinate", "numeric", 0.0027, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate"),
+    defineParameter("pMortDispBlackForest", "numeric", 0.0027, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest"),
+    defineParameter("corrFactorRes", "numeric", 15, NA, NA, "Correction factor for road mortality risk for residents"),
+    defineParameter("corrFactorDisp", "numeric", 8, NA, NA, "Correction factor for road mortality risk for dispersers"),
+
+  rCollDisp    rCollRes rNoCollDisp  rNoCollRes 
+ 0.25155979  0.09195616  0.20055751  0.15613017
+
+
+Reference values:
+DATA:
+Mortality rate for dispersers for the Jura population (1988-1998): 0.47 (Breitenmoser-Würsten et al., 2007)
+Mortality rate for residents for the Jura population (1988-1998): 0.24 (Breitenmoser-Würsten et al., 2007)
+Proportion of collision mortality over the whole mortality for dispersers for the Jura population (1988-1998): 0.44 (Breitenmoser-Würsten et al., 2007)
+Proportion of collision mortality over the whole mortality for residents for the Jura population (1988-1998): 0.27 (Breitenmoser-Würsten et al., 2007)
+
+DATA
+Proportion of collision mortality over the whole mortality for dispersers (2010-2020): 0.654 (KORA)
+Proportion of collision mortality over the whole mortality for residents (2010-2020): 0.462 (KORA)
+
+DATA
+Mortality rate for dispersers for the Alps population (1996-2000): 0.56 (Breitenmoser-Würsten et al., 2001)
+Mortality rate for residents for the Alps population (1996-2000): 0.28 (Breitenmoser-Würsten et al., 2001)
+Proportion of collision mortality over the whole mortality for dispersers for the Alps population (1996-2000): 0.4 (Breitenmoser-Würsten et al., 2001)
+Proportion of collision mortality over the whole mortality for residents for the Jura population (1996-2000): 0.043 (Breitenmoser-Würsten et al., 2001)
+
+Parameter extracted:
+Collision mortality rate for dispersers: mean(c(0.47,0.56)) * mean(c(0.44,0.654)) = 0.282
+Collision mortality rate for residents: mean(c(0.24,0.28)) * mean(c(0.27,0.462)) = 0.095
+Non-collision mortality rate for dispersers: mean(c(0.47,0.56)) * (1 - mean(c(0.44,0.654))) = 0.233
+Non-collision mortality rate for residents: mean(c(0.24,0.28)) * (1 - mean(c(0.27,0.462))) = 0.165
+
+
+References:
+Breitenmoser-Würsten, C., Vandel, J.-M., Zimmermann, F., & Breitenmoser, U. (2007). Demography of lynx Lynx lynx in the Jura Mountains. Wildlife Biol. 13, 381–392.
+KORA. (2022). https://kora.ch/fr/especes/lynx/pertes/
+Breitenmoser-Würsten, C., Zimmermann, F., Ryser, A., Capt, S., Laass, J., Siegenthaler, A., & Breitenmoser, U. (2001). Untersuchungen zur Luchspopulation in den Nordwestalpen der Schweiz 1997–2000. KORA Bericht.
+

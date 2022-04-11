@@ -255,77 +255,49 @@ plot(pays, add = TRUE)
 # by collision or otherwise
 
 deathLynx <- cbind(repSim = rep(1:nSim, each = lastYear), year = rep(1:(lastYear), nSim), 
-                   rCollMaleDisp = rep(0, (lastYear)*nSim), rCollFemaleDisp = rep(0, (lastYear)*nSim),
-                   rCollMaleRes = rep(0, (lastYear)*nSim), rCollFemaleRes = rep(0, (lastYear)*nSim),
-                   rNoCollMaleDisp = rep(0, (lastYear)*nSim), rNoCollFemaleDisp = rep(0, (lastYear)*nSim),
-                   rNoCollMaleRes = rep(0, (lastYear)*nSim), rNoCollFemaleRes = rep(0, (lastYear)*nSim))
+                   rCollDisp = rep(0, (lastYear)*nSim), rCollRes = rep(0, (lastYear)*nSim), 
+                   rNoCollDisp = rep(0, (lastYear)*nSim), rNoCollRes = rep(0, (lastYear)*nSim))
 
 for(i in 1:length(listSim)){ # for each simulation run
   load(paste0(pathFiles, "/", listSim[i]))
   
   for(y in 1:(lastYear)){
     
-    # Collisions
-    nCollMaleDisp <- NLcount(agents = NLwith(agents = NLwith(agents = lynxIBMrun$deadLynxColl[[y]],
-                                                             var = "status", val = "disp"),
-                                             var = "sex", val = "M"))
+    # Collisions - Dispersers
+    nCollDisp <- NLcount(agents = NLwith(agents = lynxIBMrun$deadLynxColl[[y]],
+                                                             var = "status", val = "disp"))
+    # Deaths other than by collisions - Dispersers
+    nNoCollDisp <- NLcount(agents = NLwith(agents = lynxIBMrun$deadLynxNoColl[[y]],
+                                                               var = "status", val = "disp"))
     
-    nCollFemaleDisp <- NLcount(agents = NLwith(agents = NLwith(agents = lynxIBMrun$deadLynxColl[[y]],
-                                                             var = "status", val = "disp"),
-                                             var = "sex", val = "F"))
-
-    nCollMaleRes <- NLcount(agents = NLwith(agents = NLwith(agents = lynxIBMrun$deadLynxColl[[y]],
-                                                             var = "status", val = "res"),
-                                             var = "sex", val = "M"))
-    
-    nCollFemaleRes <- NLcount(agents = NLwith(agents = NLwith(agents = lynxIBMrun$deadLynxColl[[y]],
-                                                               var = "status", val = "res"),
-                                               var = "sex", val = "F"))
-
-    # Deaths other than by collisions
-    nNoCollMaleDisp <- NLcount(agents = NLwith(agents = NLwith(agents = lynxIBMrun$deadLynxNoColl[[y]],
-                                                             var = "status", val = "disp"),
-                                             var = "sex", val = "M"))
-    
-    nNoCollFemaleDisp <- NLcount(agents = NLwith(agents = NLwith(agents = lynxIBMrun$deadLynxNoColl[[y]],
-                                                               var = "status", val = "disp"),
-                                               var = "sex", val = "F"))
-    
-    nNoCollMaleRes <- NLcount(agents = NLwith(agents = NLwith(agents = lynxIBMrun$deadLynxNoColl[[y]],
-                                                            var = "status", val = "res"),
-                                            var = "sex", val = "M"))
-    
-    nNoCollFemaleRes <- NLcount(agents = NLwith(agents = NLwith(agents = lynxIBMrun$deadLynxNoColl[[y]],
-                                                              var = "status", val = "res"),
-                                              var = "sex", val = "F"))
+    # Collisions - Residents
+    lynxColl <- NLwith(agents = lynxIBMrun$deadLynxColl[[y]], var = "status", val = "res")
+    # Deaths other than by collisions - Residents
+    lynxNoColl <- NLwith(agents = lynxIBMrun$deadLynxNoColl[[y]], var = "status", val = "res")
+    # For the residents, some may have die from both sources, so assign randomly one mortality
+    if(NLcount(agents = lynxColl) > 0 & NLcount(agents = lynxNoColl) > 0){
+      lynxBoth <- length(intersect(of(agents = lynxColl, var = "who"), of(agents = lynxNoColl, var = "who")))
+      randomColl <- rbinom(n = 1, size = lynxBoth, prob = 0.5)
+      nCollRes <- NLcount(agents = lynxColl) - lynxBoth + randomColl
+      nNoCollRes <- NLcount(agents = lynxNoColl) - lynxBoth + (lynxBoth - randomColl)
+    } else {
+      nCollRes <- NLcount(agents = lynxColl)
+      nNoCollRes <- NLcount(agents = lynxNoColl)
+    }
 
     # Number of individuals at the beginning of the yearly time step
-    nMaleDisp <- NLcount(agents = NLwith(agents = NLwith(agents = lynxIBMrun$outputLynx[[y]],
-                                                             var = "status", val = "disp"),
-                                             var = "sex", val = "M"))
+    nDisp <- NLcount(agents = NLwith(agents = lynxIBMrun$outputLynx[[y]],
+                                                             var = "status", val = "disp"))
     
-    nFemaleDisp <- NLcount(agents = NLwith(agents = NLwith(agents = lynxIBMrun$outputLynx[[y]],
-                                                               var = "status", val = "disp"),
-                                               var = "sex", val = "F"))
-    
-    nMaleRes <- NLcount(agents = NLwith(agents = NLwith(agents = lynxIBMrun$outputLynx[[y]],
-                                                            var = "status", val = "res"),
-                                            var = "sex", val = "M"))
-    
-    nFemaleRes <- NLcount(agents = NLwith(agents = NLwith(agents = lynxIBMrun$outputLynx[[y]],
-                                                              var = "status", val = "res"),
-                                              var = "sex", val = "F"))
-    
+    nRes <- NLcount(agents = NLwith(agents = lynxIBMrun$outputLynx[[y]],
+                                                            var = "status", val = "res"))
+
     # Mortality rates
-    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollMaleDisp"] <- nCollMaleDisp / nMaleDisp
-    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollFemaleDisp"] <- nCollFemaleDisp / nFemaleDisp
-    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollMaleRes"] <- nCollMaleRes / nMaleRes
-    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollFemaleRes"] <- nCollFemaleRes / nFemaleRes
-    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rNoCollMaleDisp"] <- nNoCollMaleDisp / nMaleDisp
-    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rNoCollFemaleDisp"] <- nNoCollFemaleDisp / nFemaleDisp
-    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rNoCollMaleRes"] <- nNoCollMaleRes / nMaleRes
-    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rNoCollFemaleRes"] <- nNoCollFemaleRes / nFemaleRes
-    
+    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollDisp"] <- nCollDisp / nDisp
+    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollRes"] <- nCollRes / nRes
+    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rNoCollDisp"] <- nNoCollDisp / nDisp
+    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rNoCollRes"] <- nNoCollRes / nRes
+
   }
   print(i)
 }
@@ -333,6 +305,6 @@ for(i in 1:length(listSim)){ # for each simulation run
 
 # We remove the first 5 years for which the population is settling down (burn-in)
 # Mean over the year and the replicates
-colMeans(deathLynx[deathLynx[,"year"] %in% 6:50, 3:10], na.rm = TRUE)
+colMeans(deathLynx[deathLynx[,"year"] %in% 6:50, 3:6], na.rm = TRUE)
 # Standard deviation
-apply(deathLynx[deathLynx[,"year"] %in% 6:50, 3:10], 2, sd)
+apply(deathLynx[deathLynx[,"year"] %in% 6:50, 3:6], 2, sd)
