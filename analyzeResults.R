@@ -264,19 +264,31 @@ for(i in 1:length(listSim)){ # for each simulation run
     # Collisions - Dispersers
     lynxDispColl <- NLwith(agents = lynxIBMrun$deadLynxColl[[y]], var = "status", val = "disp")
     nCollDisp <- NLcount(agents = lynxDispColl)
-    ageDeath <- c(ageDeath, of(agents = lynxDispColl, var = "age"))
+    if(nCollDisp > 0){
+      ageDeath <- c(ageDeath, of(agents = lynxDispColl, var = "age"))
+    }
     
     # Deaths other than by collisions - Dispersers
     lynxDispNoColl <- NLwith(agents = lynxIBMrun$deadLynxNoColl[[y]], var = "status", val = "disp")
     nNoCollDisp <- NLcount(agents = lynxDispNoColl)
-    ageDeath <- c(ageDeath, of(agents = lynxDispNoColl, var = "age"))
+    if(nNoCollDisp > 0){
+      ageDeath <- c(ageDeath, of(agents = lynxDispNoColl, var = "age"))
+    }
     
     # Collisions - Residents
     lynxResColl <- NLwith(agents = lynxIBMrun$deadLynxColl[[y]], var = "status", val = "res")
+    nCollRes <- NLcount(agents = lynxResColl)
+    if(nCollRes > 0){
+      ageDeath <- c(ageDeath, of(agents = lynxResColl, var = "age"))
+    }
     # Deaths other than by collisions - Residents
     lynxResNoColl <- NLwith(agents = lynxIBMrun$deadLynxNoColl[[y]], var = "status", val = "res")
+    nNoCollRes <- NLcount(agents = lynxResNoColl)
+    if(nNoCollRes > 0){
+      ageDeath <- c(ageDeath, of(agents = lynxResNoColl, var = "age"))
+    }
     # For the residents, some may have die from both sources, so assign randomly one mortality
-    if(NLcount(agents = lynxResColl) > 0 & NLcount(agents = lynxResNoColl) > 0){
+    if(nCollRes > 0 & nNoCollRes > 0){
       lynxBoth <- intersect(of(agents = lynxResColl, var = "who"), of(agents = lynxResNoColl, var = "who"))
       
       if(length(lynxBoth) > 0){
@@ -292,14 +304,8 @@ for(i in 1:length(listSim)){ # for each simulation run
         nNoCollRes <- NLcount(agents = lynxResNoColl)
         ageDeath <- c(ageDeath, of(agents = lynxResNoColl, var = "age"))
         
-      } else {
-        nCollRes <- NLcount(agents = lynxResColl)
-        nNoCollRes <- NLcount(agents = lynxResNoColl)
-        
-        ageDeath <- c(ageDeath, of(agents = lynxResColl, var = "age"))
-        ageDeath <- c(ageDeath, of(agents = nNoCollRes, var = "age"))
       }
-     }
+    } 
 
     # Number of individuals at the beginning of the yearly time step
     nDisp <- NLcount(agents = NLwith(agents = lynxIBMrun$outputLynx[[y]],
@@ -328,3 +334,44 @@ apply(deathLynx[deathLynx[,"year"] %in% 6:50, 3:6], 2, sd)
 # Age at death summary
 summary(ageDeath)
 barplot(table(ageDeath), xlab = "Age", main = "Age at death")
+barplot(c(frollsum(table(ageDeath), 2)[seq(from = 2, to = 14, by = 2)], 11),
+        names.arg=c("2-3", "4-5", "6-7", "8-9", "10-11", "12-13", "14-15", "16"), 
+        main = "Age at death", xlab = "Age",ylab = "Number of individuals")
+
+# Dispersal distance
+dispDist <- c()
+
+for(i in 1:length(listSim)){ # for each simulation run
+  load(paste0(pathFiles, "/", listSim[i]))
+  
+  bornInd <- cbind.data.frame(xcor = c(), ycor = c(), who = c())
+  resInd <- cbind.data.frame(xcor2 = c(), ycor2 = c(), who = c())
+  
+  for(y in 6:(lastYear)){ # remove the 5 first years to let the individuals settle down and install the populations
+    
+    # Where lynx were born and where they became residents
+    if(NLcount(agents = lynxIBMrun$bornLynx[[y]]) > 0){
+      bornInd <- rbind(bornInd, lynxIBMrun$bornLynx[[y]]@.Data[,c("xcor", "ycor", "who"), drop = FALSE])
+    }
+    if(NLcount(agents = lynxIBMrun$resLynx[[y]]) > 0){
+      resIndLines <- lynxIBMrun$resLynx[[y]]@.Data[,c("xcor", "ycor", "who"), drop = FALSE]
+      colnames(resIndLines)[c(1, 2)] <- c("xcor2", "ycor2")
+      resInd <- rbind(resInd, resIndLines)
+    }
+  }
+  
+  # At the end of the simulation run, merge the lynx born location 
+  # with the place where they became residents based on their ID
+  # and calculate the distance
+  bornResInd <- merge(bornInd, resInd, by = "who", all = TRUE)
+  bornResInd$dist <- NLdist(agents = cbind(pxcor = bornResInd$xcor, pycor = bornResInd$ycor),
+                            agents2 = cbind(pxcor = bornResInd$xcor2, pycor = bornResInd$ycor2))
+  dispDist <- dispDist <- c(dispDist, bornResInd$dist[!is.na(bornResInd$dist)])
+  
+  print(i)
+}
+
+# Dispersal distance summary
+summary(dispDist)
+hist(dispDist, xlab = "Distance (km)", main = "Dispersal distance")
+

@@ -1,16 +1,15 @@
-    defineParameter("pMortResAlps", "numeric", 0.17, NA, NA, "Fixed annual probability of mortality for residents in the Alps"),
-    defineParameter("pMortResJura", "numeric", 0.17, NA, NA, "Fixed annual probability of mortality for residents in the Jura"),
-    defineParameter("pMortResVosgesPalatinate", "numeric", 0.17, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate"),
-    defineParameter("pMortResBlackForest", "numeric", 0.17, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest"),    defineParameter("pMortDispAlps", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps"),
-    defineParameter("pMortDispAlps", "numeric", 0.001, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps"),
-    defineParameter("pMortDispJura", "numeric", 0.001, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura"),
-    defineParameter("pMortDispVosgesPalatinate", "numeric", 0.001, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate"),
-    defineParameter("pMortDispBlackForest", "numeric", 0.001, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest"),
+    defineParameter("pMortResAlps", "numeric", 0.165, NA, NA, "Fixed annual probability of mortality for residents in the Alps"),
+    defineParameter("pMortResJura", "numeric", 0.165, NA, NA, "Fixed annual probability of mortality for residents in the Jura"),
+    defineParameter("pMortResVosgesPalatinate", "numeric", 0.165, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate"),
+    defineParameter("pMortResBlackForest", "numeric", 0.165, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest"),    defineParameter("pMortDispAlps", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps"),
+    defineParameter("pMortDispAlps", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps"),
+    defineParameter("pMortDispJura", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura"),
+    defineParameter("pMortDispVosgesPalatinate", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate"),
+    defineParameter("pMortDispBlackForest", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest"),
     defineParameter("corrFactorRes", "numeric", 10, NA, NA, "Correction factor for road mortality risk for residents"),
-    defineParameter("corrFactorDisp", "numeric", 7, NA, NA, "Correction factor for road mortality risk for dispersers"),
+    defineParameter("corrFactorDisp", "numeric", 20, NA, NA, "Correction factor for road mortality risk for dispersers"),
 
-  rCollDisp    rCollRes rNoCollDisp  rNoCollRes 
- 0.37739307  0.06890484  0.10065270  0.15226648 
+
 
 
 Reference values:

@@ -1,16 +1,16 @@
-    defineParameter("pMortResAlps", "numeric", 0.17, NA, NA, "Fixed annual probability of mortality for residents in the Alps"),
-    defineParameter("pMortResJura", "numeric", 0.17, NA, NA, "Fixed annual probability of mortality for residents in the Jura"),
-    defineParameter("pMortResVosgesPalatinate", "numeric", 0.17, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate"),
-    defineParameter("pMortResBlackForest", "numeric", 0.17, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest"),    defineParameter("pMortDispAlps", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps"),
+    defineParameter("pMortResAlps", "numeric", 0.165, NA, NA, "Fixed annual probability of mortality for residents in the Alps"),
+    defineParameter("pMortResJura", "numeric", 0.165, NA, NA, "Fixed annual probability of mortality for residents in the Jura"),
+    defineParameter("pMortResVosgesPalatinate", "numeric", 0.165, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate"),
+    defineParameter("pMortResBlackForest", "numeric", 0.165, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest"),    defineParameter("pMortDispAlps", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps"),
     defineParameter("pMortDispAlps", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps"),
     defineParameter("pMortDispJura", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura"),
     defineParameter("pMortDispVosgesPalatinate", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate"),
     defineParameter("pMortDispBlackForest", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest"),
-    defineParameter("corrFactorRes", "numeric", 8, NA, NA, "Correction factor for road mortality risk for residents"),
-    defineParameter("corrFactorDisp", "numeric", 3.5, NA, NA, "Correction factor for road mortality risk for dispersers"),
+    defineParameter("corrFactorRes", "numeric", 10, NA, NA, "Correction factor for road mortality risk for residents"),
+    defineParameter("corrFactorDisp", "numeric", 10, NA, NA, "Correction factor for road mortality risk for dispersers"),
 
   rCollDisp    rCollRes rNoCollDisp  rNoCollRes 
- 0.48955699  0.05363109  0.05371617  0.15477995
+ 0.36219336  0.06888041  0.09444865  0.14720634
 
 
 Reference values:
