@@ -250,6 +250,9 @@ plot(pays, add = TRUE)
 
 # Realized mortality rates for residents and dispersers by collision or otherwise
 deathLynx <- cbind(repSim = rep(1:nSim, each = lastYear), year = rep(1:(lastYear), nSim), 
+                   nCollDisp = rep(0, (lastYear)*nSim), nCollRes = rep(0, (lastYear)*nSim), 
+                   nNoCollDisp = rep(0, (lastYear)*nSim), nNoCollRes = rep(0, (lastYear)*nSim),
+                   nDisp = rep(0, (lastYear)*nSim), nRes = rep(0, (lastYear)*nSim),
                    rCollDisp = rep(0, (lastYear)*nSim), rCollRes = rep(0, (lastYear)*nSim), 
                    rNoCollDisp = rep(0, (lastYear)*nSim), rNoCollRes = rep(0, (lastYear)*nSim))
 
@@ -308,13 +311,23 @@ for(i in 1:length(listSim)){ # for each simulation run
     } 
 
     # Number of individuals at the beginning of the yearly time step
-    nDisp <- NLcount(agents = NLwith(agents = lynxIBMrun$outputLynx[[y]],
-                                                             var = "status", val = "disp"))
-    
-    nRes <- NLcount(agents = NLwith(agents = lynxIBMrun$outputLynx[[y]],
-                                                            var = "status", val = "res"))
+    if(NLcount(lynxIBMrun$outputLynx[[y]]) != 0){
+      nDisp <- NLcount(agents = NLwith(agents = lynxIBMrun$outputLynx[[y]],
+                                       var = "status", val = "disp"))
+      nRes <- NLcount(agents = NLwith(agents = lynxIBMrun$outputLynx[[y]],
+                                      var = "status", val = "res"))
+    } else {
+      nDisp <- 0
+      nRes <- 0
+    }
 
     # Mortality rates
+    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nCollDisp"] <- nCollDisp
+    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nCollRes"] <- nCollRes
+    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nNoCollDisp"] <- nNoCollDisp
+    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nNoCollRes"] <- nNoCollRes
+    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nDisp"] <- nDisp
+    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nRes"] <- nRes
     deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollDisp"] <- nCollDisp / nDisp
     deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollRes"] <- nCollRes / nRes
     deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rNoCollDisp"] <- nNoCollDisp / nDisp
@@ -325,11 +338,12 @@ for(i in 1:length(listSim)){ # for each simulation run
 }
 
 
-# We remove the first 5 years for which the population is settling down (burn-in)
-# Mean over the year and the replicates
-colMeans(deathLynx[deathLynx[,"year"] %in% 6:50, 3:6], na.rm = TRUE)
-# Standard deviation
-apply(deathLynx[deathLynx[,"year"] %in% 6:50, 3:6], 2, sd)
+# We need to remove the time when there were no more individuals
+# and remove the first year when we removed the mortality
+mean(deathLynx[deathLynx[, "nDisp"] != 0, "rCollDisp"], na.rm = TRUE)
+mean(deathLynx[deathLynx[, "nRes"] != 0, "rCollRes"], na.rm = TRUE)
+mean(deathLynx[deathLynx[, "nDisp"] != 0, "rNoCollDisp"], na.rm = TRUE)
+mean(deathLynx[deathLynx[, "nRes"] != 0, "rNoCollRes"], na.rm = TRUE)
 
 # Age at death summary
 summary(ageDeath)
