@@ -30,10 +30,10 @@ defineModule(sim, list(
     defineParameter("pKittyOldF", "numeric", c(0.5, 0.5), NA, NA, "Probabilities for old females to have nKittyOldF"),
     defineParameter("minAgeReproF", "numeric", 2, NA, NA, "Age minimum for females to reproduce"),
     defineParameter("minAgeReproM", "numeric", 3, NA, NA, "Age minimum for males to reproduce"),
-    defineParameter("pMortResAlps", "numeric", 0.165, NA, NA, "Fixed annual probability of mortality for residents in the Alps"),
-    defineParameter("pMortResJura", "numeric", 0.165, NA, NA, "Fixed annual probability of mortality for residents in the Jura"),
-    defineParameter("pMortResVosgesPalatinate", "numeric", 0.165, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate"),
-    defineParameter("pMortResBlackForest", "numeric", 0.165, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest"),
+    defineParameter("pMortResAlps", "numeric", 0.19, NA, NA, "Fixed annual probability of mortality for residents in the Alps"),
+    defineParameter("pMortResJura", "numeric", 0.19, NA, NA, "Fixed annual probability of mortality for residents in the Jura"),
+    defineParameter("pMortResVosgesPalatinate", "numeric", 0.19, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate"),
+    defineParameter("pMortResBlackForest", "numeric", 0.19, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest"),
     defineParameter("ageMax", "numeric", 20, NA, NA, "Age maximum individuals can be"),
     defineParameter("xPs", "numeric", 11, NA, NA, "Exponent of power function to define the daily step distribution"),
     defineParameter("sMaxPs", "numeric", 45, NA, NA, "Maximum number of intraday movement steps"),
@@ -43,8 +43,8 @@ defineModule(sim, list(
     defineParameter("pMortDispJura", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura"),
     defineParameter("pMortDispVosgesPalatinate", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate"),
     defineParameter("pMortDispBlackForest", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest"),
-    defineParameter("corrFactorRes", "numeric", 1, NA, NA, "Correction factor for road mortality risk for residents"),
-    defineParameter("corrFactorDisp", "numeric", 20, NA, NA, "Correction factor for road mortality risk for dispersers"),
+    defineParameter("corrFactorRes", "numeric", 12, NA, NA, "Correction factor for road mortality risk for residents"),
+    defineParameter("corrFactorDisp", "numeric", 500, NA, NA, "Correction factor for road mortality risk for dispersers"),
     defineParameter("nMatMax", "numeric", 10, NA, NA, "Maximum number of consecutive steps within which the individual needs to find dispsersal habitat"),
     defineParameter("coreTerrSizeFAlps", "numeric", 43.5, NA, NA, "Core size for a female territory (km2) in the Alps"),
     defineParameter("coreTerrSizeFJura", "numeric", 73, NA, NA, "Core size for a female territory (km2) in the Jura"),
@@ -286,6 +286,8 @@ initSim <- function(sim) {
   sim$deadLynxNoColl <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # dead lynx other than by collision each year
   sim$resLynx <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # individuals becoming resident each year
   sim$deadDisp <- data.frame(nDisp = numeric(), nDispDeadColl = numeric(), nDispDeadDaily = numeric(), time = numeric()) # how many lynx died during dispersal
+  # Individuals that will disperse this year
+  sim$dispOfTheYear <- NLwith(agents = sim$lynx, var = "status", val = "disp")
   
   return(invisible(sim))
 }
@@ -370,7 +372,6 @@ reproduction <- function(sim) {
                                    turtles = NLwith(agents =
                                                       NLwith(agents = sim$lynx, var = "status", val = "res"),
                                                     var = "sex", val = "F"), agents = cellKitten)
-        if(sum(is.na(of(agents = femWithKitten, var = "maleID"))) != 0){browser()}
         expect_equivalent(sum(is.na(of(agents = femWithKitten, var = "maleID"))), 0)
       }
     }
@@ -411,12 +412,18 @@ mortality <- function(sim) {
     # Residents dying from spatial mortality dependent on the road density in their territory
     infoRes <- resident@.Data[, c("who", "maleID", "rdMortTerr"), drop = FALSE]
     # For males => mean value of the female territories they occupy
-    if(sum(is.na(infoRes[,"maleID"])) != 0) {
-      infoRes[infoRes[,"who"] %in% infoRes[,"maleID"], "rdMortTerr"] <-
-        aggregate(infoRes[, "rdMortTerr"], list(infoRes[,"maleID"]), mean)[, "x"]
+    sexRes <- of(agents = resident, var = "sex")
+    if(sum(sexRes == "M") != 0) {
+      # Identify the females paired with male lynx
+      femOfMales <- NLwith(agents = sim$lynx, var = "maleID", val = infoRes[sexRes == "M", "who"])
+      meanRdMortTerrMales <- aggregate(of(agents = femOfMales, var = "rdMortTerr"),
+                                       list(of(agents = femOfMales, var = "maleID")), mean)
+      infoRes[infoRes[, "who"] %in% meanRdMortTerrMales[,1], "rdMortTerr"] <- meanRdMortTerrMales[, "x"]
     }
     # Add the correction factor for the residents
-    deathResRd <- rbinom(n = nRes, size = 1, prob = (infoRes[, "rdMortTerr"]) * P(sim)$corrFactorRes)
+    probCollRes <- (infoRes[, "rdMortTerr"]) * P(sim)$corrFactorRes
+    probCollRes <- ifelse(probCollRes > 1, 1, probCollRes)
+    deathResRd <- rbinom(n = nRes, size = 1, prob = probCollRes)
     sim$nColl <- rbind(sim$nColl, data.frame(ncoll = sum(deathResRd), time = floor(time(sim))[1]))
     
     # Resident individuals that will die
@@ -483,7 +490,6 @@ mortality <- function(sim) {
       lynxResFem <- turtlesOn(world = sim$terrMap,
                               turtles = NLwith(agents = lynxRes, var = "sex", val = "F"),
                               agents = locKitty, simplify = TRUE)
-      if(NROW(locKitty) != NLcount(lynxResFem)){browser()}
       expect_true(NROW(locKitty) <= NLcount(lynxResFem))
       expect_equivalent(sum(infoPop[,"nFem"]), length(infoPop[,"maleID"][!is.na(infoPop[,"maleID"])]))
       expect_true(all(of(agents = sim$lynx, var = "nFem") >= 0))
@@ -493,13 +499,16 @@ mortality <- function(sim) {
       expect_true(all(terrNumTerrMap[!is.na(terrNumTerrMap)] %in% terrNumLynx))
     }
   }
+  
+  # Individuals that will disperse this year
+  sim$dispOfTheYear <- NLwith(agents = sim$lynx, var = "status", val = "disp")
 
   return(invisible(sim))
 }
 
 ### Dispersal
 dispersal <- function(sim) {
-  
+
   disperser <- NLwith(agents = sim$lynx, var = "status", val = "disp")
   nDisp <- NLcount(disperser)
   nonDisperser <- other(agents = sim$lynx, except = disperser)
@@ -806,19 +815,33 @@ dispersal <- function(sim) {
           sim <- searchTerritory(sim)
           disperser <- turtle(turtles = sim$lynx, who = disperserID)
           nonDisperser <- turtle(turtles = sim$lynx, who = nonDisperserID)
-        }
+
+        } # end of if(NLcount(dispersingInd) != 0){
         
       } # end of if(NLcount(disperser) != 0)
-    }
+    } # end of number of steps during the day
+  } # end of if(nDisp != 0)
     
-    # Fixed daily mortality
-    if(NLcount(disperser) != 0){
+  # Fixed daily mortality for all individuals that were dispersers at the beginning of the year
+  # and which are still alive
+  # and spatial mortality for individuals that were dispersers at the beginning of the year
+  # but are not dispersing anymore (found a territory during the year)
+  # and which are still alive
+  if((NLcount(sim$lynx) != 0) & (NLcount(sim$dispOfTheYear) != 0) & floor(time(sim))[1] != start(sim, "year")[1]){
+    
+    allDisp <- turtle(turtles = sim$lynx, who = intersect(of(agents = sim$lynx, var = "who"),
+                                                          of(agents = sim$dispOfTheYear, var = "who")))
+
+    if(NLcount(allDisp) != 0){
       
-      disperserID <- disperser@.Data[, "who"]
+      # Fixed daily mortality for all individuals that were dispersers at the beginning of the year
+      # and which are still alive
       
+      allDispID <- allDisp@.Data[, "who"]
+    
       # Fixed mortality for dispersers different regarding their population (when data is available)
       # Population = where they are (not where they are from)
-      popDisperser <- of(world = sim$popDist, agents = patchHere(world = sim$popDist,  turtles = disperser))
+      popDisperser <- of(world = sim$popDist, agents = patchHere(world = sim$popDist,  turtles = allDisp))
       deathDispAlps <- rbinom(n = length(popDisperser[popDisperser == 1]),
                               size = 1, prob = P(sim)$pMortDispAlps)
       deathDispJura <- rbinom(n = length(popDisperser[popDisperser == 2]),
@@ -836,72 +859,64 @@ dispersal <- function(sim) {
       # Do not kill the dispersers the first year of simulation
       # because all individuals from the initial population are dispersers
       if(floor(time(sim))[1] == start(sim, "year")[1]){
-        deathDaily <- rep(0, length(disperserID))
+        deathDaily <- rep(0, length(allDispID))
       }
 
-      deadWhoDaily <- disperserID[deathDaily == 1]
-      # Some of the dispersers may have become resident during this daily time step
+      deadWhoDaily <- allDispID[deathDaily == 1]
+      # Some of the dispersers may have become resident during the year
       # Update variables of dependent individuals
-      statusDeadDisp <- of(agents = disperser, var = "status")
+      statusDeadDisp <- of(agents = allDisp, var = "status")
       if(sum(statusDeadDisp == "res") != 0) {
-        
+
         # Territories of dead females
         cellDeadFem <- NLwith(world = sim$terrMap, agents = patches(sim$terrMap), val = deadWhoDaily)
         sim$terrMap <- NLset(world = sim$terrMap, agents = cellDeadFem, val = NA)
         
         # Males associated to dead females
-        deadRes <- turtle(turtles = disperser, who = deadWhoDaily)
+        deadRes <- turtle(turtles = allDisp, who = deadWhoDaily)
         maleIDLooseFem <- deadRes@.Data[, "maleID"]
         maleIDLooseFem <- maleIDLooseFem[!is.na(maleIDLooseFem)]
         if(length(maleIDLooseFem) != 0) {
           maleIDLooseFemTbl <- table(maleIDLooseFem)
           maleIDLooseFemUniq <- as.numeric(names(maleIDLooseFemTbl))
           maleIDLooseFemCnt <- as.numeric(maleIDLooseFemTbl)
-          maleLooseFem <- turtle(turtles = turtleSet(disperser, nonDisperser), who = maleIDLooseFemUniq)
+          maleLooseFem <- turtle(turtles = sim$lynx, who = maleIDLooseFemUniq)
           newFemCount <- maleLooseFem@.Data[, "nFem"] - maleIDLooseFemCnt
-          allIndMaleUpdated <- NLset(turtles = turtleSet(disperser, nonDisperser), agents = maleLooseFem, var = "nFem", val = newFemCount)
+          sim$lynx <- NLset(turtles = sim$lynx, agents = maleLooseFem, var = "nFem", val = newFemCount)
           if(NLcount(maleLooseFem[newFemCount == 0]) != 0){
-            allIndMaleUpdated <- NLset(turtles = allIndMaleUpdated, agents = maleLooseFem[newFemCount == 0], var = "status", val = "disp")
+            sim$lynx <- NLset(turtles = sim$lynx, agents = maleLooseFem[newFemCount == 0], var = "status", val = "disp")
           }
-          disperser <- NLwith(agents = allIndMaleUpdated, var = "who", val = of(agents = disperser, var = "who"))
-          nonDisperser <- NLwith(agents = allIndMaleUpdated, var = "who", val = of(agents = nonDisperser, var = "who"))
         }
-        
+
         # Females associated to dead males
-        # Female dispersers
-        femaleDispLooseMale <- NLwith(agents = disperser, var = "maleID", val = deadWhoDaily)
-        if(NLcount(femaleDispLooseMale) != 0) {
-          #disperser <- NLset(turtles = disperser, agents = femaleDispLooseMale, var = "maleID", val = NA)
-          disperser@.Data[match(femaleDispLooseMale@.Data[, "who"], disperser@.Data[, "who"]), "maleID"] <- as.numeric(NA) # faster
-        }
-        # Female residents
-        femaleResLooseMale <- NLwith(agents = nonDisperser, var = "maleID", val = deadWhoDaily)
-        if(NLcount(femaleResLooseMale) != 0) {
-          #nonDisperser <- NLset(turtles = nonDisperser, agents = femaleResLooseMale, var = "maleID", val = NA)
-          nonDisperser@.Data[match(femaleResLooseMale@.Data[, "who"], nonDisperser@.Data[, "who"]), "maleID"] <- as.numeric(NA) # faster
+        femaleLooseMale <- NLwith(agents = sim$lynx, var = "maleID", val = deadWhoDaily)
+        if(NLcount(femaleLooseMale) != 0) {
+          sim$lynx <- NLset(turtles = sim$lynx, agents = femaleLooseMale, var = "maleID", val = NA)
         }
       }
       
       # Test
       if(P(sim)$testON == TRUE) {
-        countPop <- NLcount(disperser)
+        countPop <- NLcount(allDisp)
       }
-      
+
       # Kill the individuals
       if(length(deadWhoDaily) != 0){
-        sim$deadLynxNoColl[[time(sim, "year")[1]]] <- turtleSet(sim$deadLynxNoColl[[time(sim, "year")[1]]], turtle(turtles = disperser, who = deadWhoDaily)) # add the new lynx dead by other than by collisions
+        # These dead individuals should be counted as "dispersers" as they die during their dispersal year
+        # However they obtain a resident status so need to change their status
+        allDisp <- NLset(turtles = turtle(turtles = allDisp, who = deadWhoDaily), agents = turtle(turtles = allDisp, who = deadWhoDaily), var = "status", val = "disp")
+        sim$deadLynxNoColl[[time(sim, "year")[1]]] <- turtleSet(sim$deadLynxNoColl[[time(sim, "year")[1]]], turtle(turtles = allDisp, who = deadWhoDaily)) # add the new lynx dead by other than by collisions
       }
-      disperser <- die(turtles = disperser, who = deadWhoDaily)
+      sim$lynx <- die(turtles = sim$lynx, who = deadWhoDaily)
       sim$deadDisp[sim$deadDisp$time == floor(time(sim))[1], "nDispDeadDaily"] <- length(deadWhoDaily)
-      
+
       # Test
       if(P(sim)$testON == TRUE) {
-        expect_equivalent(NLcount(disperser), countPop - length(deadWhoDaily))
+        expect_equivalent(NLcount(allDisp), countPop - length(deadWhoDaily))
       }
       
-      sim$lynx <- turtleSet(disperser, nonDisperser)
       sim$lynx <- sortOn(agents = sim$lynx, var = "who")
-      
+
       # Test
       if(P(sim)$testON == TRUE) {
         infoPop <- of(agents = sim$lynx, var = c("who", "maleID", "nFem"))
@@ -914,6 +929,100 @@ dispersal <- function(sim) {
                                           var = "status", val = "res"), var = "who")
         expect_true(all(terrNumTerrMap[!is.na(terrNumTerrMap)] %in% terrNumLynx))
       }
+
+      # Spatial mortality for individuals that were dispersers at the beginning of the year
+      # but are not dispersing anymore (found a territory during the year)
+      # and which are still alive
+      formerDisp <- other(agents = NLwith(agents = allDisp, var = "status", val = "res"), 
+                          except = disperser) # do not include the current disperser of the day
+      # The warning happening here indicate that some of the disperser (except) are not included
+      # in the agents we try to exclude them. It's okay, we only want the difference between the two
+
+      if(NLcount(formerDisp) != 0){
+
+        ##########################################################################
+        # This block of code is the same as the spatial mortality for the resident
+        # except for the correction factor
+        # Dispersers dying from spatial mortality dependent on the road density in their territory
+        infoFormerDisp <- formerDisp@.Data[, c("who", "maleID", "rdMortTerr"), drop = FALSE]
+        # For males => mean value of the female territories they occupy
+        sexFormerDisp <- of(agents = formerDisp, var = "sex")
+        if(sum(sexFormerDisp == "M") != 0) {
+          # Identify the females paired with male lynx
+          femOfMales <- NLwith(agents = sim$lynx, var = "maleID", val = infoFormerDisp[sexFormerDisp == "M", "who"])
+          meanRdMortTerrMales <- aggregate(of(agents = femOfMales, var = "rdMortTerr"),
+                                           list(of(agents = femOfMales, var = "maleID")), mean)
+          infoFormerDisp[infoFormerDisp[, "who"] %in% meanRdMortTerrMales[,1], "rdMortTerr"] <- meanRdMortTerrMales[, "x"]
+        }
+        # Add the correction factor for the residents
+        probCollFormerDisp <- ((infoFormerDisp[, "rdMortTerr"]) * P(sim)$corrFactorRes) / 365
+        deathFormerDispRd <- rbinom(n = NLcount(formerDisp), size = 1, prob = probCollFormerDisp)
+        sim$nColl <- rbind(sim$nColl, data.frame(ncoll = sum(deathFormerDispRd), time = floor(time(sim))[1]))
+        
+        # Dispersers individuals that will die
+        deadWhoFormerDisp <- infoFormerDisp[,"who"][deathFormerDispRd == 1]
+        
+        # Empty territories belonging to dead females
+        cellDeadFem <- NLwith(world = sim$terrMap, agents = patches(sim$terrMap), val = deadWhoFormerDisp)
+        sim$terrMap <- NLset(world = sim$terrMap, agents = cellDeadFem, val = NA)
+        
+        # Remove dead females associated to males
+        deadFormerDisp <- turtle(turtles = sim$lynx, who = deadWhoFormerDisp)
+        maleIDLooseFem <- deadFormerDisp@.Data[, "maleID"]
+        maleIDLooseFem <- maleIDLooseFem[!is.na(maleIDLooseFem)]
+        if(length(maleIDLooseFem) != 0) {
+          maleIDLooseFemTbl <- table(maleIDLooseFem)
+          maleIDLooseFemUniq <- as.numeric(names(maleIDLooseFemTbl))
+          maleIDLooseFemCnt <- as.numeric(maleIDLooseFemTbl)
+          maleLooseFem <- turtle(turtles = sim$lynx, who = maleIDLooseFemUniq)
+          newFemCount <- maleLooseFem@.Data[, "nFem"] - maleIDLooseFemCnt
+          sim$lynx <- NLset(turtles = sim$lynx, agents = maleLooseFem, var = "nFem", val = newFemCount)
+          # If some males end up with 0 female, they become disperser again
+          if(NLcount(maleLooseFem[newFemCount == 0]) != 0){
+            sim$lynx <- NLset(turtles = sim$lynx, agents = maleLooseFem[newFemCount == 0], var = "status", val = "disp")
+          }
+        }
+
+        # Remove dead males associated to females
+        femaleLooseMale <- NLwith(agents = sim$lynx, var = "maleID", val = deadWhoFormerDisp)
+        if(NLcount(femaleLooseMale) != 0) {
+          sim$lynx <- NLset(turtles = sim$lynx, agents = femaleLooseMale, var = "maleID", val = NA)
+        }
+        
+        # Test
+        if(P(sim)$testON == TRUE) {
+          countPop <- NLcount(sim$lynx)
+        }
+        
+        # Remove individuals from the population
+        if(length(deadWhoFormerDisp) != 0){
+          sim$deadLynxColl[[time(sim, "year")[1]]] <- turtleSet(sim$deadLynxColl[[time(sim, "year")[1]]], deadFormerDisp) # add the new lynx dead by collisions
+          sim$lynx <- die(turtles = sim$lynx, who = deadWhoFormerDisp)
+        }
+        
+        # Test
+        if(P(sim)$testON == TRUE) {
+          expect_equivalent(NLcount(sim$lynx), countPop - (length(deadWhoFormerDisp)))
+          infoPop <- of(agents = sim$lynx, var = c("who", "maleID", "nFem"))
+          expect_length(intersect(deadWhoFormerDisp, infoPop[, "who"]), 0)
+          expect_true(all(infoPop[,"maleID"][!is.na(infoPop[,"maleID"])] %in% infoPop[,"who"]))
+          locKitty <- unique(patchHere(world = sim$terrMap, turtles = NLwith(agents = sim$lynx, var = "status",
+                                                                             val = "kitty")))
+          lynxRes <- NLwith(agents = sim$lynx, var = "status", val = "res")
+          lynxResFem <- turtlesOn(world = sim$terrMap,
+                                  turtles = NLwith(agents = lynxRes, var = "sex", val = "F"),
+                                  agents = locKitty, simplify = TRUE)
+          expect_true(NROW(locKitty) <= NLcount(lynxResFem))
+          expect_equivalent(sum(infoPop[,"nFem"]), length(infoPop[,"maleID"][!is.na(infoPop[,"maleID"])]))
+          expect_true(all(of(agents = sim$lynx, var = "nFem") >= 0))
+          terrNumTerrMap <- unique(of(world = sim$terrMap, agents = patches(sim$terrMap)))
+          terrNumLynx <- of(agents = NLwith(agents = NLwith(agents = sim$lynx, var = "sex", val = "F"),
+                                            var = "status", val = "res"), var = "who")
+          expect_true(all(terrNumTerrMap[!is.na(terrNumTerrMap)] %in% terrNumLynx))
+        }
+
+      } # end of if(NLcount(formerDisp) != 0)
+
     }
     
   }
@@ -1075,6 +1184,10 @@ searchTerritory <- function(sim) {
                             val = cbind(status =  "res", nFem = 1))
           # Save the data about the new residents
           if(length(maleClaiming) != 0){
+            # There can be duplicates here as males becoming resident once can become disperser again if their female(s) die(s)
+            # and so when they become resident again afterwards (in the same year) they are duplicated here.
+            # However, turtleSet() only keep the first instance so there are no duplicates in the output resLynx, 
+            # only the first time will be recorded.
             sim$resLynx[[time(sim, "year")[1]]] <- turtleSet(sim$resLynx[[time(sim, "year")[1]]], turtle(turtles = sim$lynx, who = of(agents = maleClaiming, var = "who")))
           }
           
