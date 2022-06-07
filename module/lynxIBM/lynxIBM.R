@@ -39,13 +39,13 @@ defineModule(sim, list(
     defineParameter("sMaxPs", "numeric", 45, NA, NA, "Maximum number of intraday movement steps"),
     defineParameter("pMat", "numeric", 0.03, NA, NA, "Probability of stepping into matrix cells"),
     defineParameter("pCorr", "numeric", 0.5, NA, NA, "Movement correlation probability"),
-    defineParameter("pMortDispAlps", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps"),
-    defineParameter("pMortDispJura", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura"),
-    defineParameter("pMortDispVosgesPalatinate", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate"),
-    defineParameter("pMortDispBlackForest", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest"),
-    defineParameter("corrFactorRes", "numeric", 12, NA, NA, "Correction factor for road mortality risk for residents"),
-    defineParameter("corrFactorDisp", "numeric", 500, NA, NA, "Correction factor for road mortality risk for dispersers"),
-    defineParameter("nMatMax", "numeric", 10, NA, NA, "Maximum number of consecutive steps within which the individual needs to find dispsersal habitat"),
+    defineParameter("pMortDispAlps", "numeric", 0.00085, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps"),
+    defineParameter("pMortDispJura", "numeric", 0.00085, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura"),
+    defineParameter("pMortDispVosgesPalatinate", "numeric", 0.00085, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate"),
+    defineParameter("pMortDispBlackForest", "numeric", 0.00085, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest"),
+    defineParameter("corrFactorRes", "numeric", 13, NA, NA, "Correction factor for road mortality risk for residents"),
+    defineParameter("corrFactorDisp", "numeric", 7, NA, NA, "Correction factor for road mortality risk for dispersers"),
+    defineParameter("nMatMax", "numeric", 30, NA, NA, "Maximum number of consecutive steps within which the individual needs to find dispsersal habitat"),
     defineParameter("coreTerrSizeFAlps", "numeric", 43.5, NA, NA, "Core size for a female territory (km2) in the Alps"),
     defineParameter("coreTerrSizeFJura", "numeric", 73, NA, NA, "Core size for a female territory (km2) in the Jura"),
     defineParameter("coreTerrSizeFVosgesPalatinate", "numeric", 73, NA, NA, "Core size for a female territory (km2) in the Vosges-Palatinate"),
@@ -416,6 +416,7 @@ mortality <- function(sim) {
     if(sum(sexRes == "M") != 0) {
       # Identify the females paired with male lynx
       femOfMales <- NLwith(agents = sim$lynx, var = "maleID", val = infoRes[sexRes == "M", "who"])
+      if(NLcount(femOfMales) == 0){browser()}
       meanRdMortTerrMales <- aggregate(of(agents = femOfMales, var = "rdMortTerr"),
                                        list(of(agents = femOfMales, var = "maleID")), mean)
       infoRes[infoRes[, "who"] %in% meanRdMortTerrMales[,1], "rdMortTerr"] <- meanRdMortTerrMales[, "x"]
@@ -897,22 +898,25 @@ dispersal <- function(sim) {
       
       # Test
       if(P(sim)$testON == TRUE) {
-        countPop <- NLcount(allDisp)
+        countPop <- NLcount(sim$lynx)
+        countAllDisp <- NLcount(allDisp)
       }
 
       # Kill the individuals
       if(length(deadWhoDaily) != 0){
         # These dead individuals should be counted as "dispersers" as they die during their dispersal year
         # However they obtain a resident status so need to change their status
-        allDisp <- NLset(turtles = turtle(turtles = allDisp, who = deadWhoDaily), agents = turtle(turtles = allDisp, who = deadWhoDaily), var = "status", val = "disp")
+        allDisp <- NLset(turtles = allDisp, agents = turtle(turtles = allDisp, who = deadWhoDaily), var = "status", val = "disp")
         sim$deadLynxNoColl[[time(sim, "year")[1]]] <- turtleSet(sim$deadLynxNoColl[[time(sim, "year")[1]]], turtle(turtles = allDisp, who = deadWhoDaily)) # add the new lynx dead by other than by collisions
       }
       sim$lynx <- die(turtles = sim$lynx, who = deadWhoDaily)
       sim$deadDisp[sim$deadDisp$time == floor(time(sim))[1], "nDispDeadDaily"] <- length(deadWhoDaily)
+      allDisp <- die(turtles = allDisp, who = deadWhoDaily) # for later (allDisp is reused later)
 
       # Test
       if(P(sim)$testON == TRUE) {
-        expect_equivalent(NLcount(allDisp), countPop - length(deadWhoDaily))
+        expect_equivalent(NLcount(sim$lynx), countPop - length(deadWhoDaily))
+        expect_equivalent(NLcount(allDisp), countAllDisp - length(deadWhoDaily))
       }
       
       sim$lynx <- sortOn(agents = sim$lynx, var = "who")
@@ -950,6 +954,8 @@ dispersal <- function(sim) {
         if(sum(sexFormerDisp == "M") != 0) {
           # Identify the females paired with male lynx
           femOfMales <- NLwith(agents = sim$lynx, var = "maleID", val = infoFormerDisp[sexFormerDisp == "M", "who"])
+          print(femOfMales)
+          if(NLcount(femOfMales) == 0){browser()}
           meanRdMortTerrMales <- aggregate(of(agents = femOfMales, var = "rdMortTerr"),
                                            list(of(agents = femOfMales, var = "maleID")), mean)
           infoFormerDisp[infoFormerDisp[, "who"] %in% meanRdMortTerrMales[,1], "rdMortTerr"] <- meanRdMortTerrMales[, "x"]
@@ -1092,6 +1098,7 @@ searchTerritory <- function(sim) {
             
             # Claim the territory
             sim$terrMap <- NLset(world = sim$terrMap, agents = newTerrCells, val = searchingFemID)
+            if(sum(is.na(patchHere(world = sim$terrMap, turtles = turtle(turtles = sim$lynx, who = searchingFemID)))) > 0){browser()}
             # Mortality probability in the territory
             #probMortRdTerr <- of(world = sim$roadMortMap, agents = newTerrCells)
             probMortRdTerr <- sim$roadMortMap[newTerrCells[, 1], newTerrCells[, 2]] # faster
