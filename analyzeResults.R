@@ -251,109 +251,137 @@ plot(pays, add = TRUE)
 ## Summary metrics ##
 #####################
 
-# Realized mortality rates for residents and dispersers by collision or otherwise
-deathLynx <- cbind(repSim = rep(1:nSim, each = lastYear), year = rep(1:(lastYear), nSim), 
-                   nCollDisp = rep(0, (lastYear)*nSim), nCollRes = rep(0, (lastYear)*nSim), 
-                   nNoCollDisp = rep(0, (lastYear)*nSim), nNoCollRes = rep(0, (lastYear)*nSim),
-                   nDisp = rep(0, (lastYear)*nSim), nRes = rep(0, (lastYear)*nSim),
-                   rCollDisp = rep(0, (lastYear)*nSim), rCollRes = rep(0, (lastYear)*nSim), 
-                   rNoCollDisp = rep(0, (lastYear)*nSim), rNoCollRes = rep(0, (lastYear)*nSim))
+# Resulting mortality rates
+rCollDisp <- c()
+rCollRes <- c()
+rNoCollDisp <- c()
+rNoCollRes <- c()
 
-# Age at which individuals died
-ageDeath <- c()
-
-for(i in 1:length(listSim)){ # for each simulation run
-  load(paste0(pathFiles, "/", listSim[i]))
+for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
   
-  for(y in 1:(lastYear)){
+  # Realized mortality rates for residents and dispersers by collision or otherwise
+  deathLynx <- cbind(repSim = rep(1:nSim, each = lastYear), year = rep(1:(lastYear), nSim), 
+                     nCollDisp = rep(0, (lastYear)*nSim), nCollRes = rep(0, (lastYear)*nSim), 
+                     nNoCollDisp = rep(0, (lastYear)*nSim), nNoCollRes = rep(0, (lastYear)*nSim),
+                     nDisp = rep(0, (lastYear)*nSim), nRes = rep(0, (lastYear)*nSim),
+                     rCollDisp = rep(0, (lastYear)*nSim), rCollRes = rep(0, (lastYear)*nSim), 
+                     rNoCollDisp = rep(0, (lastYear)*nSim), rNoCollRes = rep(0, (lastYear)*nSim))
+  
+  for(i in 1:length(listSim)){ # for each simulation run
+    load(paste0(pathFiles, "/", listSim[i]))
     
-    # Collisions - Dispersers
-    lynxDispColl <- NLwith(agents = lynxIBMrun$deadLynxColl[[y]], var = "status", val = "disp")
-    nCollDisp <- NLcount(agents = lynxDispColl)
-    if(nCollDisp > 0){
-      ageDeath <- c(ageDeath, of(agents = lynxDispColl, var = "age"))
-    }
-    
-    # Deaths other than by collisions - Dispersers
-    lynxDispNoColl <- NLwith(agents = lynxIBMrun$deadLynxNoColl[[y]], var = "status", val = "disp")
-    nNoCollDisp <- NLcount(agents = lynxDispNoColl)
-    if(nNoCollDisp > 0){
-      ageDeath <- c(ageDeath, of(agents = lynxDispNoColl, var = "age"))
-    }
-    
-    # Collisions - Residents
-    lynxResColl <- NLwith(agents = lynxIBMrun$deadLynxColl[[y]], var = "status", val = "res")
-    nCollRes <- NLcount(agents = lynxResColl)
-    if(nCollRes > 0){
-      ageDeath <- c(ageDeath, of(agents = lynxResColl, var = "age"))
-    }
-    # Deaths other than by collisions - Residents
-    lynxResNoColl <- NLwith(agents = lynxIBMrun$deadLynxNoColl[[y]], var = "status", val = "res")
-    nNoCollRes <- NLcount(agents = lynxResNoColl)
-    if(nNoCollRes > 0){
-      ageDeath <- c(ageDeath, of(agents = lynxResNoColl, var = "age"))
-    }
-    # For the residents, some may have die from both sources, so assign randomly one mortality
-    if(nCollRes > 0 & nNoCollRes > 0){
-      lynxBoth <- intersect(of(agents = lynxResColl, var = "who"), of(agents = lynxResNoColl, var = "who"))
+    for(y in 1:(lastYear)){
       
-      if(length(lynxBoth) > 0){
-        randomColl <- rbinom(n = length(lynxBoth), size = 1, prob = 0.5)
-        
-        lynxResColl <- NLwith(agents = lynxResColl, var = "who", 
-                              val = of(agents = lynxResColl, var = "who")[!of(agents = lynxResColl, var = "who") %in% lynxBoth[which(randomColl == 0)]])
-        nCollRes <- NLcount(agents = lynxResColl)
-        ageDeath <- c(ageDeath, of(agents = lynxResColl, var = "age"))
-        
-        lynxResNoColl <- NLwith(agents = lynxResNoColl, var = "who", 
-                              val = of(agents = lynxResNoColl, var = "who")[!of(agents = lynxResNoColl, var = "who") %in% lynxBoth[which(randomColl == 1)]])
-        nNoCollRes <- NLcount(agents = lynxResNoColl)
-        ageDeath <- c(ageDeath, of(agents = lynxResNoColl, var = "age"))
-        
+      
+      if(NLcount(lynxIBMrun$deadLynxColl[[y]]) == 0){
+        deadLynxColl <- noTurtles()
+      } else {
+        deadLynxColl <- NLwith(agents = lynxIBMrun$deadLynxColl[[y]], var = "pop", val = popName)
       }
-    } 
-
-    # Number of individuals at the beginning of the yearly time step
-    if(NLcount(lynxIBMrun$outputLynx[[y]]) != 0){
-      nDisp <- NLcount(agents = NLwith(agents = lynxIBMrun$outputLynx[[y]],
-                                       var = "status", val = "disp"))
-      nRes <- NLcount(agents = NLwith(agents = lynxIBMrun$outputLynx[[y]],
-                                      var = "status", val = "res"))
-    } else {
-      nDisp <- 0
-      nRes <- 0
+      if(NLcount(lynxIBMrun$deadLynxNoColl[[y]]) == 0){
+        deadLynxNoColl <- noTurtles()
+      } else {
+        deadLynxNoColl <- NLwith(agents = lynxIBMrun$deadLynxNoColl[[y]], var = "pop", val = popName)
+      }
+      if(NLcount(lynxIBMrun$outputLynx[[y]]) == 0){
+        outputLynx <- noTurtles()
+      } else {
+        outputLynx <- NLwith(agents = lynxIBMrun$outputLynx[[y]], var = "pop", val = popName)
+      }
+      
+      # Collisions - Dispersers
+      if(NLcount(deadLynxColl) == 0){
+        nCollDisp <- 0
+      } else {
+        nCollDisp <- NLcount(agents = NLwith(agents = deadLynxColl, var = "status", val = "disp"))
+      }
+      
+      # Deaths other than by collisions - Dispersers
+      if(NLcount(deadLynxNoColl) == 0){
+        nNoCollDisp <- 0
+      } else {
+        nNoCollDisp <- NLcount(agents = NLwith(agents = deadLynxNoColl, var = "status", val = "disp"))
+      }
+      
+      # Collisions - Residents
+      if(NLcount(deadLynxColl) == 0){
+        nCollRes <- 0
+      } else {
+        lynxResColl <- NLwith(agents = deadLynxColl, var = "status", val = "res")
+        nCollRes <- NLcount(agents = lynxResColl)
+      }
+      
+      # Deaths other than by collisions - Residents
+      if(NLcount(deadLynxNoColl) == 0){
+        lynxResNoColl <- noTurtles()
+        nNoCollRes <- 0
+      } else {
+        lynxResNoColl <- NLwith(agents = deadLynxNoColl, var = "status", val = "res")
+        nNoCollRes <- NLcount(agents = lynxResNoColl)
+      }
+      # For the residents, some may have die from both sources, so assign randomly one mortality
+      if(nCollRes > 0 & nNoCollRes > 0){
+        lynxBoth <- intersect(of(agents = lynxResColl, var = "who"), of(agents = lynxResNoColl, var = "who"))
+        if(length(lynxBoth) > 0){
+          randomColl <- rbinom(n = length(lynxBoth), size = 1, prob = 0.5)
+          
+          lynxResColl <- NLwith(agents = lynxResColl, var = "who", 
+                                val = of(agents = lynxResColl, var = "who")[!of(agents = lynxResColl, var = "who") %in% lynxBoth[which(randomColl == 0)]])
+          nCollRes <- NLcount(agents = lynxResColl)
+          ageDeath <- c(ageDeath, of(agents = lynxResColl, var = "age"))
+          
+          lynxResNoColl <- NLwith(agents = lynxResNoColl, var = "who", 
+                                  val = of(agents = lynxResNoColl, var = "who")[!of(agents = lynxResNoColl, var = "who") %in% lynxBoth[which(randomColl == 1)]])
+          nNoCollRes <- NLcount(agents = lynxResNoColl)
+          ageDeath <- c(ageDeath, of(agents = lynxResNoColl, var = "age"))
+          
+        }
+      } 
+      
+      # Number of individuals at the beginning of the yearly time step
+      if(NLcount(outputLynx) != 0){
+        nDisp <- NLcount(agents = NLwith(agents = outputLynx,
+                                         var = "status", val = "disp"))
+        nRes <- NLcount(agents = NLwith(agents = outputLynx,
+                                        var = "status", val = "res"))
+      } else {
+        nDisp <- 0
+        nRes <- 0
+      }
+      
+      # Mortality rates
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nCollDisp"] <- nCollDisp
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nCollRes"] <- nCollRes
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nNoCollDisp"] <- nNoCollDisp
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nNoCollRes"] <- nNoCollRes
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nDisp"] <- nDisp
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nRes"] <- nRes
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollDisp"] <- nCollDisp / nDisp
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollRes"] <- nCollRes / nRes
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rNoCollDisp"] <- nNoCollDisp / nDisp
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rNoCollRes"] <- nNoCollRes / nRes
+      
     }
-
-    # Mortality rates
-    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nCollDisp"] <- nCollDisp
-    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nCollRes"] <- nCollRes
-    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nNoCollDisp"] <- nNoCollDisp
-    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nNoCollRes"] <- nNoCollRes
-    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nDisp"] <- nDisp
-    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nRes"] <- nRes
-    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollDisp"] <- nCollDisp / nDisp
-    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollRes"] <- nCollRes / nRes
-    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rNoCollDisp"] <- nNoCollDisp / nDisp
-    deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rNoCollRes"] <- nNoCollRes / nRes
-
+    print(i)
   }
-  print(i)
+  
+  
+  # We need to remove the time when there were no more individuals
+  # and remove the first year when we removed the mortality
+  rCollDisp <- c(rCollDisp, mean(deathLynx[deathLynx[, "nDisp"] != 0, "rCollDisp"], na.rm = TRUE))
+  rCollRes <- c(rCollRes, mean(deathLynx[deathLynx[, "nRes"] != 0, "rCollRes"], na.rm = TRUE))
+  rNoCollDisp <- c(rNoCollDisp, mean(deathLynx[deathLynx[, "nDisp"] != 0, "rNoCollDisp"], na.rm = TRUE))
+  rNoCollRes <- c(rNoCollRes, mean(deathLynx[deathLynx[, "nRes"] != 0, "rNoCollRes"], na.rm = TRUE))
+  
 }
 
+# To calculate the mean over the populations, we remove the BlackForest
+# because there are too few individuals and it bias the mean
+mean(rCollDisp[1:3])
+mean(rCollRes[1:3])
+mean(rNoCollDisp[1:3])
+mean(rNoCollRes[1:3])
 
-# We need to remove the time when there were no more individuals
-# and remove the first year when we removed the mortality
-mean(deathLynx[deathLynx[, "nDisp"] != 0, "rCollDisp"], na.rm = TRUE)
-mean(deathLynx[deathLynx[, "nRes"] != 0, "rCollRes"], na.rm = TRUE)
-mean(deathLynx[deathLynx[, "nDisp"] != 0, "rNoCollDisp"], na.rm = TRUE)
-mean(deathLynx[deathLynx[, "nRes"] != 0, "rNoCollRes"], na.rm = TRUE)
-
-# Age at death summary
-summary(ageDeath)
-barplot(table(ageDeath), xlab = "Age", main = "Age at death")
-# barplot(c(frollsum(table(ageDeath), 2)[seq(from = 2, to = 14, by = 2)], 11),
-#         names.arg=c("2-3", "4-5", "6-7", "8-9", "10-11", "12-13", "14-15", "16"), 
-#         main = "Age at death", xlab = "Age",ylab = "Number of individuals")
 
 # Dispersal distance
 dispDist <- c()
