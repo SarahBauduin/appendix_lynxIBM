@@ -884,11 +884,9 @@ dispersal <- function(sim) {
           maleLooseFem <- turtle(turtles = sim$lynx, who = maleIDLooseFemUniq)
           newFemCount <- maleLooseFem@.Data[, "nFem"] - maleIDLooseFemCnt
           sim$lynx <- NLset(turtles = sim$lynx, agents = maleLooseFem, var = "nFem", val = newFemCount)
-          # Update also allDisp because reused later (in the spatial mortality)
-          allDisp <- NLset(turtles = allDisp, agents = maleLooseFem, var = "nFem", val = newFemCount)
           if(NLcount(maleLooseFem[newFemCount == 0]) != 0){
             sim$lynx <- NLset(turtles = sim$lynx, agents = maleLooseFem[newFemCount == 0], var = "status", val = "disp")
-            # Update also allDisp because reused later (in the spatial mortality)
+            # Update also allDisp because reused in the spatial mortality to know which are dispersers and residents
             allDisp <- NLset(turtles = allDisp, agents = maleLooseFem[newFemCount == 0], var = "status", val = "disp")
           }
         }
@@ -897,8 +895,6 @@ dispersal <- function(sim) {
         femaleLooseMale <- NLwith(agents = sim$lynx, var = "maleID", val = deadWhoDaily)
         if(NLcount(femaleLooseMale) != 0) {
           sim$lynx <- NLset(turtles = sim$lynx, agents = femaleLooseMale, var = "maleID", val = NA)
-          # Update also allDisp because reused later (in the spatial mortality)
-          allDisp <- NLset(turtles = allDisp, agents = femaleLooseMale, var = "maleID", val = NA)
         }
       }
       
@@ -960,8 +956,6 @@ dispersal <- function(sim) {
         if(sum(sexFormerDisp == "M") != 0) {
           # Identify the females paired with male lynx
           femOfMales <- NLwith(agents = sim$lynx, var = "maleID", val = infoFormerDisp[sexFormerDisp == "M", "who"])
-          print(femOfMales)
-          if(NLcount(femOfMales) == 0){browser()}
           meanRdMortTerrMales <- aggregate(of(agents = femOfMales, var = "rdMortTerr"),
                                            list(of(agents = femOfMales, var = "maleID")), mean)
           infoFormerDisp[infoFormerDisp[, "who"] %in% meanRdMortTerrMales[,1], "rdMortTerr"] <- meanRdMortTerrMales[, "x"]
