@@ -30,20 +30,20 @@ defineModule(sim, list(
     defineParameter("pKittyOldF", "numeric", c(0.5, 0.5), NA, NA, "Probabilities for old females to have nKittyOldF"),
     defineParameter("minAgeReproF", "numeric", 2, NA, NA, "Age minimum for females to reproduce"),
     defineParameter("minAgeReproM", "numeric", 3, NA, NA, "Age minimum for males to reproduce"),
-    defineParameter("pMortResAlps", "numeric", 0.19, NA, NA, "Fixed annual probability of mortality for residents in the Alps"),
-    defineParameter("pMortResJura", "numeric", 0.19, NA, NA, "Fixed annual probability of mortality for residents in the Jura"),
-    defineParameter("pMortResVosgesPalatinate", "numeric", 0.19, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate"),
-    defineParameter("pMortResBlackForest", "numeric", 0.19, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest"),
+    defineParameter("pMortResAlps", "numeric", 0.22, NA, NA, "Fixed annual probability of mortality for residents in the Alps"),
+    defineParameter("pMortResJura", "numeric", 0.22, NA, NA, "Fixed annual probability of mortality for residents in the Jura"),
+    defineParameter("pMortResVosgesPalatinate", "numeric", 0.22, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate"),
+    defineParameter("pMortResBlackForest", "numeric", 0.22, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest"),
     defineParameter("ageMax", "numeric", 20, NA, NA, "Age maximum individuals can be"),
     defineParameter("xPs", "numeric", 11, NA, NA, "Exponent of power function to define the daily step distribution"),
     defineParameter("sMaxPs", "numeric", 45, NA, NA, "Maximum number of intraday movement steps"),
     defineParameter("pMat", "numeric", 0.03, NA, NA, "Probability of stepping into matrix cells"),
     defineParameter("pCorr", "numeric", 0.5, NA, NA, "Movement correlation probability"),
-    defineParameter("pMortDispAlps", "numeric", 0.00085, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps"),
-    defineParameter("pMortDispJura", "numeric", 0.00085, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura"),
-    defineParameter("pMortDispVosgesPalatinate", "numeric", 0.00085, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate"),
-    defineParameter("pMortDispBlackForest", "numeric", 0.00085, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest"),
-    defineParameter("corrFactorRes", "numeric", 13, NA, NA, "Correction factor for road mortality risk for residents"),
+    defineParameter("pMortDispAlps", "numeric", 0.0009, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps"),
+    defineParameter("pMortDispJura", "numeric", 0.0009, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura"),
+    defineParameter("pMortDispVosgesPalatinate", "numeric", 0.0009, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate"),
+    defineParameter("pMortDispBlackForest", "numeric", 0.0009, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest"),
+    defineParameter("corrFactorRes", "numeric", 8, NA, NA, "Correction factor for road mortality risk for residents"),
     defineParameter("corrFactorDisp", "numeric", 7, NA, NA, "Correction factor for road mortality risk for dispersers"),
     defineParameter("nMatMax", "numeric", 30, NA, NA, "Maximum number of consecutive steps within which the individual needs to find dispsersal habitat"),
     defineParameter("coreTerrSizeFAlps", "numeric", 43.5, NA, NA, "Core size for a female territory (km2) in the Alps"),
@@ -297,7 +297,7 @@ reproduction <- function(sim) {
   
   # Resident females with associated resident males can reproduce
   infoLynx <- sim$lynx@.Data[, c("who", "age", "maleID"), drop = FALSE]
-  # Adding regarding Säugetierkunde 1991 publication on sexual maturation in boreal lynx
+  # Adding regarding S?ugetierkunde 1991 publication on sexual maturation in boreal lynx
   # Males of 1 3/4 (i.e., 2 years old) are 50% fertile, they are all fertile at 2 3/4 (i.e., 3 years old)
   # Females of 3/4 are 50% fertile (i.e., 1 year old), they are all fertile at 1 3/4 (i.e., 2 years old)
   # We add to the potential parents, males of 2 years old and females of 1 year old with a 0.5 probability
@@ -884,8 +884,12 @@ dispersal <- function(sim) {
           maleLooseFem <- turtle(turtles = sim$lynx, who = maleIDLooseFemUniq)
           newFemCount <- maleLooseFem@.Data[, "nFem"] - maleIDLooseFemCnt
           sim$lynx <- NLset(turtles = sim$lynx, agents = maleLooseFem, var = "nFem", val = newFemCount)
+          # Update also allDisp because reused later (in the spatial mortality)
+          allDisp <- NLset(turtles = allDisp, agents = maleLooseFem, var = "nFem", val = newFemCount)
           if(NLcount(maleLooseFem[newFemCount == 0]) != 0){
             sim$lynx <- NLset(turtles = sim$lynx, agents = maleLooseFem[newFemCount == 0], var = "status", val = "disp")
+            # Update also allDisp because reused later (in the spatial mortality)
+            allDisp <- NLset(turtles = allDisp, agents = maleLooseFem[newFemCount == 0], var = "status", val = "disp")
           }
         }
 
@@ -893,6 +897,8 @@ dispersal <- function(sim) {
         femaleLooseMale <- NLwith(agents = sim$lynx, var = "maleID", val = deadWhoDaily)
         if(NLcount(femaleLooseMale) != 0) {
           sim$lynx <- NLset(turtles = sim$lynx, agents = femaleLooseMale, var = "maleID", val = NA)
+          # Update also allDisp because reused later (in the spatial mortality)
+          allDisp <- NLset(turtles = allDisp, agents = femaleLooseMale, var = "maleID", val = NA)
         }
       }
       
