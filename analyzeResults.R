@@ -394,7 +394,7 @@ for(i in 1:length(listSim)){ # for each simulation run
   bornInd <- cbind.data.frame(xcor = c(), ycor = c(), who = c())
   resInd <- cbind.data.frame(xcor2 = c(), ycor2 = c(), who = c())
   
-  for(y in 6:(lastYear - 1)){ # remove the 5 first years to let the individuals settle down and install the populations
+  for(y in 2:(lastYear - 1)){ 
     
     # Territories where lynx were born
     if(NLcount(agents = lynxIBMrun$bornLynx[[y]]) > 0){
