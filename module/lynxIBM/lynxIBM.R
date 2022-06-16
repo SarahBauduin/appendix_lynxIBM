@@ -30,22 +30,22 @@ defineModule(sim, list(
     defineParameter("pKittyOldF", "numeric", c(0.5, 0.5), NA, NA, "Probabilities for old females to have nKittyOldF"),
     defineParameter("minAgeReproF", "numeric", 2, NA, NA, "Age minimum for females to reproduce"),
     defineParameter("minAgeReproM", "numeric", 3, NA, NA, "Age minimum for males to reproduce"),
-    defineParameter("pMortResAlps", "numeric", 0.22, NA, NA, "Fixed annual probability of mortality for residents in the Alps"),
-    defineParameter("pMortResJura", "numeric", 0.22, NA, NA, "Fixed annual probability of mortality for residents in the Jura"),
-    defineParameter("pMortResVosgesPalatinate", "numeric", 0.22, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate"),
-    defineParameter("pMortResBlackForest", "numeric", 0.22, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest"),
+    defineParameter("pMortResAlps", "numeric", 0.2, NA, NA, "Fixed annual probability of mortality for residents in the Alps"),
+    defineParameter("pMortResJura", "numeric", 0.2, NA, NA, "Fixed annual probability of mortality for residents in the Jura"),
+    defineParameter("pMortResVosgesPalatinate", "numeric", 0.2, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate"),
+    defineParameter("pMortResBlackForest", "numeric", 0.2, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest"),
     defineParameter("ageMax", "numeric", 20, NA, NA, "Age maximum individuals can be"),
     defineParameter("xPs", "numeric", 11, NA, NA, "Exponent of power function to define the daily step distribution"),
     defineParameter("sMaxPs", "numeric", 45, NA, NA, "Maximum number of intraday movement steps"),
-    defineParameter("pMat", "numeric", 0.03, NA, NA, "Probability of stepping into matrix cells"),
+    defineParameter("pMat", "numeric", 0.08, NA, NA, "Probability of stepping into matrix cells"),
     defineParameter("pCorr", "numeric", 0.5, NA, NA, "Movement correlation probability"),
     defineParameter("pMortDispAlps", "numeric", 0.0009, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps"),
     defineParameter("pMortDispJura", "numeric", 0.0009, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura"),
     defineParameter("pMortDispVosgesPalatinate", "numeric", 0.0009, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate"),
     defineParameter("pMortDispBlackForest", "numeric", 0.0009, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest"),
-    defineParameter("corrFactorRes", "numeric", 8, NA, NA, "Correction factor for road mortality risk for residents"),
-    defineParameter("corrFactorDisp", "numeric", 7, NA, NA, "Correction factor for road mortality risk for dispersers"),
-    defineParameter("nMatMax", "numeric", 30, NA, NA, "Maximum number of consecutive steps within which the individual needs to find dispsersal habitat"),
+    defineParameter("corrFactorRes", "numeric", 10, NA, NA, "Correction factor for road mortality risk for residents"),
+    defineParameter("corrFactorDisp", "numeric", 6, NA, NA, "Correction factor for road mortality risk for dispersers"),
+    defineParameter("nMatMax", "numeric", 10, NA, NA, "Maximum number of consecutive steps within which the individual needs to find dispsersal habitat"),
     defineParameter("coreTerrSizeFAlps", "numeric", 43.5, NA, NA, "Core size for a female territory (km2) in the Alps"),
     defineParameter("coreTerrSizeFJura", "numeric", 73, NA, NA, "Core size for a female territory (km2) in the Jura"),
     defineParameter("coreTerrSizeFVosgesPalatinate", "numeric", 73, NA, NA, "Core size for a female territory (km2) in the Vosges-Palatinate"),
@@ -76,7 +76,7 @@ doEvent.lynxIBM = function(sim, eventTime, eventType, debug = FALSE) {
       
       sim <- scheduleEvent(sim, P(sim)$.plotInitialTime, "lynxIBM", "plot")
       sim <- scheduleEvent(sim, P(sim)$.saveInitialTime, "lynxIBM", "save")
-      sim <- scheduleEvent(sim, start(sim, "year"), "lynxIBM", "yearBeg")
+      #sim <- scheduleEvent(sim, start(sim, "year"), "lynxIBM", "yearBeg")
       sim <- scheduleEvent(sim, start(sim, "year") + 0.00001, "lynxIBM", "daily")
       sim <- scheduleEvent(sim, time(sim, "year") + 0.99999, "lynxIBM", "yearEnd")
     },
@@ -104,6 +104,17 @@ doEvent.lynxIBM = function(sim, eventTime, eventType, debug = FALSE) {
       
     },
     yearEnd = {
+      
+      #####
+      
+      if(NLcount(sim$lynx) != 0){
+        sim <- reproduction(sim)
+      }
+      if(NLcount(sim$lynx) != 0){
+        sim <- mortality(sim) # annual mortality
+      }        
+
+      #####
       
       if(NLcount(sim$lynx) != 0){
         sim <- demography(sim)
@@ -286,8 +297,12 @@ initSim <- function(sim) {
   sim$deadLynxNoColl <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # dead lynx other than by collision each year
   sim$resLynx <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # individuals becoming resident each year
   sim$deadDisp <- data.frame(nDisp = numeric(), nDispDeadColl = numeric(), nDispDeadDaily = numeric(), time = numeric()) # how many lynx died during dispersal
-  # Individuals that will disperse this year
+  # Individuals that will disperse the following year
   sim$dispOfTheYear <- NLwith(agents = sim$lynx, var = "status", val = "disp")
+  # Females that can reproduce (i.e., already resident and already with a male at the beginning of the year)
+  sim$reproFem <- sim$lynx@.Data[, c("who", "maleID"), drop = FALSE]
+  sim$reproFem <- turtle(turtles = sim$lynx, 
+                         who = sim$reproFem[!is.na(sim$reproFem[, "maleID"]), "who"])
   
   return(invisible(sim))
 }
@@ -296,7 +311,7 @@ initSim <- function(sim) {
 reproduction <- function(sim) {
   
   # Resident females with associated resident males can reproduce
-  infoLynx <- sim$lynx@.Data[, c("who", "age", "maleID"), drop = FALSE]
+  infoLynx <- sim$reproFem@.Data[, c("who", "age", "maleID"), drop = FALSE]
   # Adding regarding S?ugetierkunde 1991 publication on sexual maturation in boreal lynx
   # Males of 1 3/4 (i.e., 2 years old) are 50% fertile, they are all fertile at 2 3/4 (i.e., 3 years old)
   # Females of 3/4 are 50% fertile (i.e., 1 year old), they are all fertile at 1 3/4 (i.e., 2 years old)
@@ -383,7 +398,9 @@ reproduction <- function(sim) {
 ### Annual mortality
 mortality <- function(sim) {
   
-  resident <- NLwith(agents = sim$lynx, var = "status", val = "res")
+  # Need to remove the dispersing of the year
+  resident <- NLwith(agents = other(agents = sim$lynx, except = sim$dispOfTheYear),
+                     var = "status", val = "res")
   if(NLcount(resident) != 0) {
     residentID <- resident@.Data[, "who"]
     nRes <- length(residentID)
@@ -416,7 +433,6 @@ mortality <- function(sim) {
     if(sum(sexRes == "M") != 0) {
       # Identify the females paired with male lynx
       femOfMales <- NLwith(agents = sim$lynx, var = "maleID", val = infoRes[sexRes == "M", "who"])
-      if(NLcount(femOfMales) == 0){browser()}
       meanRdMortTerrMales <- aggregate(of(agents = femOfMales, var = "rdMortTerr"),
                                        list(of(agents = femOfMales, var = "maleID")), mean)
       infoRes[infoRes[, "who"] %in% meanRdMortTerrMales[,1], "rdMortTerr"] <- meanRdMortTerrMales[, "x"]
@@ -501,8 +517,10 @@ mortality <- function(sim) {
     }
   }
   
+  # With the new order, dispOfTheYear need to be created just before dispersal
+  # therefore in the demography submodel
   # Individuals that will disperse this year
-  sim$dispOfTheYear <- NLwith(agents = sim$lynx, var = "status", val = "disp")
+  # sim$dispOfTheYear <- NLwith(agents = sim$lynx, var = "status", val = "disp")
 
   return(invisible(sim))
 }
@@ -1057,7 +1075,7 @@ searchTerritory <- function(sim) {
         searchingFemCellType <- sim$habitatMap[searchingFemCell[, 1], searchingFemCell[, 2]] # faster
         #searchingFemCellAvail <- of(world = sim$terrMap, agents = searchingFemCell)
         searchingFemCellAvail <- sim$terrMap[searchingFemCell[, 1], searchingFemCell[, 2]] # faster
-        
+
         if(searchingFemCellType == 4 & is.na(searchingFemCellAvail)){ # current position
           #terrValues <- of(world = sim$terrMap, agents = patches(sim$terrMap))
           terrValues <- as.numeric(t(sim$terrMap@.Data)) # faster
@@ -1098,7 +1116,6 @@ searchTerritory <- function(sim) {
             
             # Claim the territory
             sim$terrMap <- NLset(world = sim$terrMap, agents = newTerrCells, val = searchingFemID)
-            if(sum(is.na(patchHere(world = sim$terrMap, turtles = turtle(turtles = sim$lynx, who = searchingFemID)))) > 0){browser()}
             # Mortality probability in the territory
             #probMortRdTerr <- of(world = sim$roadMortMap, agents = newTerrCells)
             probMortRdTerr <- sim$roadMortMap[newTerrCells[, 1], newTerrCells[, 2]] # faster
@@ -1137,7 +1154,7 @@ searchTerritory <- function(sim) {
               infoOtherFem <- infoOtherFem[!is.na(infoOtherFem)]
               otherMal <- turtle(turtles = sim$lynx, who = infoOtherFem)
               infoOtherMal <- otherMal@.Data[, "nFem"]
-              
+
               if(length(infoOtherFem[infoOtherMal < 3]) != 0){
                 # Calculate the distances between the new female resident and all the available males
                 distFemaleMales <- NetLogoR::NLdist(agents = turtle(turtles = sim$lynx, who = searchingFemID),
@@ -1279,6 +1296,15 @@ demography <- function(sim) {
   # Kitten become dispersers
   kitten <- NLwith(agents = sim$lynx, var = "status", val = "kitty")
   sim$lynx <- NLset(turtles = sim$lynx, agents = kitten, var = "status", val = "disp")
+  
+  # Individuals that will disperse the next year
+  sim$dispOfTheYear <- NLwith(agents = sim$lynx, var = "status", val = "disp")
+  
+  # Females that can reproduce (i.e., already resident and already with a male at the beginning of the year)
+  sim$reproFem <- sim$lynx@.Data[, c("who", "maleID"), drop = FALSE]
+  sim$reproFem <- turtle(turtles = sim$lynx, 
+                         who = sim$reproFem[!is.na(sim$reproFem$maleID), "who"])
+  
   
   return(invisible(sim))
 }
