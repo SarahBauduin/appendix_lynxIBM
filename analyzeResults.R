@@ -415,7 +415,7 @@ for(i in 1:length(listSim)){ # for each simulation run
       
     }
     # Territories of resident lynx
-    if(NLcount(agents = lynxIBMrun$resLynx[[y]]) > 0){
+    if(NLcount(agents = lynxIBMrun$resLynx[[y]]) > 0 & NLcount(agents = lynxIBMrun$outputLynx[[y + 1]]) > 0){
 
       # Separate male and female territories
       # Females
