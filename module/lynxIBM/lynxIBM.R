@@ -30,30 +30,30 @@ defineModule(sim, list(
     defineParameter("pKittyOldF", "numeric", c(0.5, 0.5), NA, NA, "Probabilities for old females to have nKittyOldF"),
     defineParameter("minAgeReproF", "numeric", 2, NA, NA, "Age minimum for females to reproduce"),
     defineParameter("minAgeReproM", "numeric", 3, NA, NA, "Age minimum for males to reproduce"),
-    defineParameter("pMortResAlps", "numeric", 0.2, NA, NA, "Fixed annual probability of mortality for residents in the Alps"),
-    defineParameter("pMortResJura", "numeric", 0.2, NA, NA, "Fixed annual probability of mortality for residents in the Jura"),
-    defineParameter("pMortResVosgesPalatinate", "numeric", 0.2, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate"),
-    defineParameter("pMortResBlackForest", "numeric", 0.2, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest"),
+    defineParameter("pMortResAlps", "numeric", 0.20, NA, NA, "Fixed annual probability of mortality for residents in the Alps"),
+    defineParameter("pMortResJura", "numeric", 0.20, NA, NA, "Fixed annual probability of mortality for residents in the Jura"),
+    defineParameter("pMortResVosgesPalatinate", "numeric", 0.20, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate"),
+    defineParameter("pMortResBlackForest", "numeric", 0.20, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest"),
     defineParameter("ageMax", "numeric", 20, NA, NA, "Age maximum individuals can be"),
     defineParameter("xPs", "numeric", 11, NA, NA, "Exponent of power function to define the daily step distribution"),
     defineParameter("sMaxPs", "numeric", 45, NA, NA, "Maximum number of intraday movement steps"),
-    defineParameter("pMat", "numeric", 0.08, NA, NA, "Probability of stepping into matrix cells"),
+    defineParameter("pMat", "numeric", 0.03, NA, NA, "Probability of stepping into matrix cells"),
     defineParameter("pCorr", "numeric", 0.5, NA, NA, "Movement correlation probability"),
     defineParameter("pMortDispAlps", "numeric", 0.0009, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps"),
     defineParameter("pMortDispJura", "numeric", 0.0009, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura"),
     defineParameter("pMortDispVosgesPalatinate", "numeric", 0.0009, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate"),
     defineParameter("pMortDispBlackForest", "numeric", 0.0009, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest"),
-    defineParameter("corrFactorRes", "numeric", 10, NA, NA, "Correction factor for road mortality risk for residents"),
-    defineParameter("corrFactorDisp", "numeric", 6, NA, NA, "Correction factor for road mortality risk for dispersers"),
+    defineParameter("corrFactorRes", "numeric", 8, NA, NA, "Correction factor for road mortality risk for residents"),
+    defineParameter("corrFactorDisp", "numeric", 12, NA, NA, "Correction factor for road mortality risk for dispersers"),
     defineParameter("nMatMax", "numeric", 10, NA, NA, "Maximum number of consecutive steps within which the individual needs to find dispsersal habitat"),
-    defineParameter("coreTerrSizeFAlps", "numeric", 43.5, NA, NA, "Core size for a female territory (km2) in the Alps"),
-    defineParameter("coreTerrSizeFJura", "numeric", 73, NA, NA, "Core size for a female territory (km2) in the Jura"),
-    defineParameter("coreTerrSizeFVosgesPalatinate", "numeric", 73, NA, NA, "Core size for a female territory (km2) in the Vosges-Palatinate"),
-    defineParameter("coreTerrSizeFBlackForest", "numeric", 73, NA, NA, "Core size for a female territory (km2) in the Black Forest"),
-    defineParameter("terrSizeMAlps", "numeric", 137, NA, NA, "Territory size (95 % kernel density) for a male (km2) in the Alps"),
-    defineParameter("terrSizeMJura", "numeric", 226, NA, NA, "Territory size (95 % kernel density) for a male (km2) in the Jura"),
-    defineParameter("terrSizeMVosgesPalatinate", "numeric", 226, NA, NA, "Territory size (95 % kernel density) for a male (km2) in the Vosges-Palatinate"),
-    defineParameter("terrSizeMBlackForest", "numeric", 226, NA, NA, "Territory size (95 % kernel density) for a male (km2) in the Black Forest"),
+    defineParameter("coreTerrSizeFAlps", "numeric", 97, NA, NA, "Home range size for a female territory (km2) in the Alps"),
+    defineParameter("coreTerrSizeFJura", "numeric", 126, NA, NA, "Home range size for a female territory (km2) in the Jura"),
+    defineParameter("coreTerrSizeFVosgesPalatinate", "numeric", 126, NA, NA, "Home range size for a female territory (km2) in the Vosges-Palatinate"),
+    defineParameter("coreTerrSizeFBlackForest", "numeric", 126, NA, NA, "Home range size for a female territory (km2) in the Black Forest"),
+    defineParameter("terrSizeMAlps", "numeric", 159, NA, NA, "Home range size for a male (km2) in the Alps"),
+    defineParameter("terrSizeMJura", "numeric", 270, NA, NA, "Home range size for a male (km2) in the Jura"),
+    defineParameter("terrSizeMVosgesPalatinate", "numeric", 270, NA, NA, "Home range size for a male (km2) in the Vosges-Palatinate"),
+    defineParameter("terrSizeMBlackForest", "numeric", 270, NA, NA, "Home range size for a male (km2) in the Black Forest"),
     defineParameter("testON", "logical", TRUE, NA, NA, "Run the tests")
   ),
   inputObjects = bind_rows(
@@ -299,19 +299,17 @@ initSim <- function(sim) {
   sim$deadDisp <- data.frame(nDisp = numeric(), nDispDeadColl = numeric(), nDispDeadDaily = numeric(), time = numeric()) # how many lynx died during dispersal
   # Individuals that will disperse the following year
   sim$dispOfTheYear <- NLwith(agents = sim$lynx, var = "status", val = "disp")
-  # Females that can reproduce (i.e., already resident and already with a male at the beginning of the year)
-  sim$reproFem <- sim$lynx@.Data[, c("who", "maleID"), drop = FALSE]
-  sim$reproFem <- turtle(turtles = sim$lynx, 
-                         who = sim$reproFem[!is.na(sim$reproFem[, "maleID"]), "who"])
+  # Individuals that can reproduce (i.e., already resident at the beginning of the year)
+  sim$resInd <- other(agents = sim$lynx, except = sim$dispOfTheYear)
   
   return(invisible(sim))
 }
 
 ### Reproduction
 reproduction <- function(sim) {
-  
+
   # Resident females with associated resident males can reproduce
-  infoLynx <- sim$reproFem@.Data[, c("who", "age", "maleID"), drop = FALSE]
+  infoLynx <- sim$resInd@.Data[, c("who", "age", "maleID"), drop = FALSE]
   # Adding regarding S?ugetierkunde 1991 publication on sexual maturation in boreal lynx
   # Males of 1 3/4 (i.e., 2 years old) are 50% fertile, they are all fertile at 2 3/4 (i.e., 3 years old)
   # Females of 3/4 are 50% fertile (i.e., 1 year old), they are all fertile at 1 3/4 (i.e., 2 years old)
@@ -319,14 +317,14 @@ reproduction <- function(sim) {
   maleReproID <- infoLynx[infoLynx[, "age"] >= P(sim)$minAgeReproM, "who"] # resident males in age of reproduction associated to females
   males2yrs <- infoLynx[infoLynx[, "age"] == 2, "who"]
   maleReproID <- c(maleReproID, males2yrs[which(rbinom(n = length(males2yrs), size = 1, prob = 0.5) == 1)])
-  
+
   femReproID <- infoLynx[infoLynx[, "age"] >= P(sim)$minAgeReproF & infoLynx[, "maleID"] %in% maleReproID, "who"]
   females1yr <- infoLynx[infoLynx[, "age"] == 1 & infoLynx[, "maleID"] %in% maleReproID, "who"]
   femReproID <- c(femReproID, females1yr[which(rbinom(n = length(females1yr), size = 1, prob = 0.5) == 1)])
   
   toRepro <- rbinom(length(femReproID), size = 1, prob = P(sim)$pRepro)
   momsID <- femReproID[toRepro == 1] # ID of the females that will reproduce
-  
+
   if(length(momsID) != 0) {
     # Number of kittens each female will have depending of their age
     ageFemales <- of(agents = turtle(turtles = sim$lynx, who = momsID), var = "age")
@@ -344,52 +342,56 @@ reproduction <- function(sim) {
       NpopBeforeRepro <- NLcount(sim$lynx)
     }
     
-    # Create the kitten
-    sim$lynx <- hatch(turtles = sim$lynx, who = momsID, n = nKittyBorn, breed = "kitty")
-    # Update the kitten variables
-    kitten <- NLwith(agents = sim$lynx, var = "breed", val = "kitty")
-    sexKitten <- sample(c("F", "M"), size = NLcount(kitten), replace = TRUE)
-    colorKitten <- randomColor(count = NLcount(kitten), hue = "random", luminosity = "random")
-    kittenVar <- cbind.data.frame(prevX = NA,
-                                  prevY = NA,
-                                  breed = "turtle",
-                                  color = colorKitten,
-                                  sex = sexKitten,
-                                  age = 0,
-                                  status = "kitty",
-                                  steps = 0,
-                                  # lastDispX = NA, # to avoid bug, newborn inherit as the last known good habitat the one from their mother
-                                  # lastDispY = NA,
-                                  nMat = 0,
-                                  maleID = NA,
-                                  nFem = 0,
-                                  rdMortTerr = 0)
-    sim$lynx <- NLset(turtles = sim$lynx, agents = kitten, var = colnames(kittenVar), val = kittenVar)
-    # Assign the population name of the newborns where there are
-    popHere <- of(world = sim$popDist, agents = patchHere(world = sim$popDist, turtles = kitten))
-    popHereName <- rep("Unknown", length(popHere))
-    popHereName[popHere == 1] <-  "Alps"
-    popHereName[popHere == 2] <-  "Jura"
-    popHereName[popHere == 3] <-  "Vosges-Palatinate"
-    popHereName[popHere == 4] <-  "BlackForest"
-    sim$lynx <- NLset(turtles = sim$lynx, agents = kitten, var = "pop", val = popHereName)
-    sim$bornLynx[[time(sim, "year")[1]]] <- turtle(turtles = sim$lynx, who = of(agents = kitten, var = "who")) # newborns of the year
-    sim$parentsRepro[[time(sim, "year")[1]]] <- turtle(turtles = sim$lynx,
-                                                       who = unique(c(momsID, of(agents = turtle(turtles = sim$lynx, who = momsID), var = "maleID")))) # reproducing individuals of the year
-    
-    # Test
-    if(P(sim)$testON == TRUE) {
-      expect_equivalent(NpopBeforeRepro + NLcount(kitten), NLcount(sim$lynx))
-      cellKitten <- patchHere(world = sim$habitatMap,
-                              turtles = NLwith(agents = sim$lynx, var = "status", val = "kitty"))
-      if(NROW(cellKitten) != 0) {
-        femWithKitten <- turtlesOn(world = sim$habitatMap,
-                                   turtles = NLwith(agents =
-                                                      NLwith(agents = sim$lynx, var = "status", val = "res"),
-                                                    var = "sex", val = "F"), agents = cellKitten)
-        expect_equivalent(sum(is.na(of(agents = femWithKitten, var = "maleID"))), 0)
+    if(sum(nKittyBorn) != 0){
+      
+      # Create the kitten
+      sim$lynx <- hatch(turtles = sim$lynx, who = momsID, n = nKittyBorn, breed = "kitty")
+      # Update the kitten variables
+      kitten <- NLwith(agents = sim$lynx, var = "breed", val = "kitty")
+      sexKitten <- sample(c("F", "M"), size = NLcount(kitten), replace = TRUE)
+      colorKitten <- randomColor(count = NLcount(kitten), hue = "random", luminosity = "random")
+      kittenVar <- cbind.data.frame(prevX = NA,
+                                    prevY = NA,
+                                    breed = "turtle",
+                                    color = colorKitten,
+                                    sex = sexKitten,
+                                    age = 0,
+                                    status = "kitty",
+                                    steps = 0,
+                                    # lastDispX = NA, # to avoid bug, newborn inherit as the last known good habitat the one from their mother
+                                    # lastDispY = NA,
+                                    nMat = 0,
+                                    maleID = NA,
+                                    nFem = 0,
+                                    rdMortTerr = 0)
+      sim$lynx <- NLset(turtles = sim$lynx, agents = kitten, var = colnames(kittenVar), val = kittenVar)
+      # Assign the population name of the newborns where there are
+      popHere <- of(world = sim$popDist, agents = patchHere(world = sim$popDist, turtles = kitten))
+      popHereName <- rep("Unknown", length(popHere))
+      popHereName[popHere == 1] <-  "Alps"
+      popHereName[popHere == 2] <-  "Jura"
+      popHereName[popHere == 3] <-  "Vosges-Palatinate"
+      popHereName[popHere == 4] <-  "BlackForest"
+      sim$lynx <- NLset(turtles = sim$lynx, agents = kitten, var = "pop", val = popHereName)
+      sim$bornLynx[[time(sim, "year")[1]]] <- turtle(turtles = sim$lynx, who = of(agents = kitten, var = "who")) # newborns of the year
+      sim$parentsRepro[[time(sim, "year")[1]]] <- turtle(turtles = sim$lynx,
+                                                         who = unique(c(momsID, of(agents = turtle(turtles = sim$lynx, who = momsID), var = "maleID")))) # reproducing individuals of the year
+      
+      # Test
+      if(P(sim)$testON == TRUE) {
+        expect_equivalent(NpopBeforeRepro + NLcount(kitten), NLcount(sim$lynx))
+        cellKitten <- patchHere(world = sim$habitatMap,
+                                turtles = NLwith(agents = sim$lynx, var = "status", val = "kitty"))
+        if(NROW(cellKitten) != 0) {
+          femWithKitten <- turtlesOn(world = sim$habitatMap,
+                                     turtles = NLwith(agents =
+                                                        NLwith(agents = sim$lynx, var = "status", val = "res"),
+                                                      var = "sex", val = "F"), agents = cellKitten)
+          expect_equivalent(sum(is.na(of(agents = femWithKitten, var = "maleID"))), 0)
+        }
       }
-    }
+      
+    } # end of if(sum(nKittyBorn) != 0)
   }
   
   return(invisible(sim))
@@ -397,7 +399,7 @@ reproduction <- function(sim) {
 
 ### Annual mortality
 mortality <- function(sim) {
-  
+
   # Need to remove the dispersing of the year
   resident <- NLwith(agents = other(agents = sim$lynx, except = sim$dispOfTheYear),
                      var = "status", val = "res")
@@ -1056,7 +1058,7 @@ dispersal <- function(sim) {
 
 ### Territory search
 searchTerritory <- function(sim) {
-  
+
   disp <- turtle(turtles = sim$lynx, who = sim$aliveDispersingIndID)
   
   if(NLcount(disp) != 0) {
@@ -1289,7 +1291,7 @@ searchTerritory <- function(sim) {
 
 ### Demography update
 demography <- function(sim) {
-  
+
   # Aging
   ageLynx <- sim$lynx@.Data[, "age"]
   sim$lynx <- NLset(turtles = sim$lynx, agents = sim$lynx, var = "age", val = ageLynx + 1)
@@ -1300,18 +1302,15 @@ demography <- function(sim) {
   # Individuals that will disperse the next year
   sim$dispOfTheYear <- NLwith(agents = sim$lynx, var = "status", val = "disp")
   
-  # Females that can reproduce (i.e., already resident and already with a male at the beginning of the year)
-  sim$reproFem <- sim$lynx@.Data[, c("who", "maleID"), drop = FALSE]
-  sim$reproFem <- turtle(turtles = sim$lynx, 
-                         who = sim$reproFem[!is.na(sim$reproFem$maleID), "who"])
-  
+  # Individuals that can reproduce (i.e., already resident at the beginning of the year)
+  sim$resInd <- other(agents = sim$lynx, except = sim$dispOfTheYear)
   
   return(invisible(sim))
 }
 
 ### Plot
 plotSim <- function(sim) {
-  
+
   dev(4)
   Plot(sim$habitatMap, title = "Habitats with lynx territories and positions")
   Plot(sim$terrMap, addTo = "sim$habitatMap", col = "black", zero.color = "transparent", title = "")
@@ -1324,7 +1323,7 @@ plotSim <- function(sim) {
 
 ### Save
 saveSim <- function(sim){
-  
+
   sim$outputLynx[[length(sim$outputLynx) + 1]] <- sim$lynx  
   sim$outputTerrMap[[length(sim$outputTerrMap) + 1]] <- sim$terrMap
   
