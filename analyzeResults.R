@@ -386,6 +386,7 @@ mean(rNoCollRes[1:3])
 dispDist <- c()
 # Use a raster to transfer the territories on it to extract the centroid
 habMapSpaDES <- raster("C:/Users/Bauduin/Documents/GitHub/appendix_lynxIBM/module/inputs/habMap.tif")
+popAlpsJura <- "Jura" # "Jura" or "Alps"
 
 for(i in 1:length(listSim)){ # for each simulation run
   load(paste0(pathFiles, "/", listSim[i]))
@@ -396,7 +397,7 @@ for(i in 1:length(listSim)){ # for each simulation run
   for(y in 2:(lastYear - 1)){ 
     
     # Territories where lynx were born
-    if(NLcount(agents = NLwith(agents = lynxIBMrun$bornLynx[[y]],var = "pop", val = "Alps")) > 0){
+    if(NLcount(agents = NLwith(agents = lynxIBMrun$bornLynx[[y]],var = "pop", val = popAlpsJura)) > 0){
       # Territory centroids
       habMapSpaDES[] <- lynxIBMrun$outputTerrMap[[y]] # transfer the territory number from the worldMatrix to a raster
       terrPol <- rasterToPolygons(habMapSpaDES, dissolve = TRUE)
@@ -406,12 +407,12 @@ for(i in 1:length(listSim)){ # for each simulation run
       # Born individuals
       terrBornInd <- of(world = lynxIBMrun$outputTerrMap[[y]],
                         agents = patchHere(world = lynxIBMrun$outputTerrMap[[y]], 
-                                           turtles = NLwith(agents=lynxIBMrun$bornLynx[[y]],var = "pop",val = "Alps")))
+                                           turtles = NLwith(agents=lynxIBMrun$bornLynx[[y]],var = "pop",val = popAlpsJura)))
       terrBornInd2 <- merge(as.data.frame(terrBornInd), centroidTerr, by.x = "terrBornInd", by.y = "habMap")
       terrBornInd2 <- terrBornInd2[match(terrBornInd, terrBornInd2[,"terrBornInd"]),]
       bornInd <- rbind(bornInd, 
                        cbind.data.frame(xcor = terrBornInd2[,"xcor"], ycor = terrBornInd2[,"ycor"],
-                                        who = of(agents = NLwith(agents=lynxIBMrun$bornLynx[[y]],var = "pop",val = "Alps"), var = "who")))
+                                        who = of(agents = NLwith(agents=lynxIBMrun$bornLynx[[y]],var = "pop",val = popAlpsJura), var = "who")))
       
     }
     # Territories of resident lynx
