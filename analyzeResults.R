@@ -272,7 +272,6 @@ for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
     
     for(y in 1:(lastYear)){
       
-      
       if(NLcount(lynxIBMrun$deadLynxColl[[y]]) == 0){
         deadLynxColl <- noTurtles()
       } else {
@@ -387,6 +386,7 @@ mean(rNoCollRes[1:3])
 dispDist <- c()
 # Use a raster to transfer the territories on it to extract the centroid
 habMapSpaDES <- raster("C:/Users/Bauduin/Documents/GitHub/appendix_lynxIBM/module/inputs/habMap.tif")
+popAlpsJura <- "Jura" # "Jura" or "Alps"
 
 for(i in 1:length(listSim)){ # for each simulation run
   load(paste0(pathFiles, "/", listSim[i]))
@@ -394,29 +394,30 @@ for(i in 1:length(listSim)){ # for each simulation run
   bornInd <- cbind.data.frame(xcor = c(), ycor = c(), who = c())
   resInd <- cbind.data.frame(xcor2 = c(), ycor2 = c(), who = c())
   
-  for(y in 6:(lastYear - 1)){ # remove the 5 first years to let the individuals settle down and install the populations
+  for(y in 2:(lastYear - 1)){ 
     
     # Territories where lynx were born
-    if(NLcount(agents = lynxIBMrun$bornLynx[[y]]) > 0){
+    if(NLcount(agents = NLwith(agents = lynxIBMrun$bornLynx[[y]],var = "pop", val = popAlpsJura)) > 0){
       # Territory centroids
       habMapSpaDES[] <- lynxIBMrun$outputTerrMap[[y]] # transfer the territory number from the worldMatrix to a raster
       terrPol <- rasterToPolygons(habMapSpaDES, dissolve = TRUE)
       spPoints <- gCentroid(terrPol, byid = TRUE)
       centroidTerr <- cbind.data.frame(xcor = spPoints@coords[,1], ycor = spPoints@coords[,2], 
-                                              terrNum = terrPol@data)
+                                       terrNum = terrPol@data)
       # Born individuals
       terrBornInd <- of(world = lynxIBMrun$outputTerrMap[[y]],
-                        agents = patchHere(world = lynxIBMrun$outputTerrMap[[y]], turtles = lynxIBMrun$bornLynx[[y]]))
+                        agents = patchHere(world = lynxIBMrun$outputTerrMap[[y]], 
+                                           turtles = NLwith(agents=lynxIBMrun$bornLynx[[y]],var = "pop",val = popAlpsJura)))
       terrBornInd2 <- merge(as.data.frame(terrBornInd), centroidTerr, by.x = "terrBornInd", by.y = "habMap")
       terrBornInd2 <- terrBornInd2[match(terrBornInd, terrBornInd2[,"terrBornInd"]),]
       bornInd <- rbind(bornInd, 
                        cbind.data.frame(xcor = terrBornInd2[,"xcor"], ycor = terrBornInd2[,"ycor"],
-                                        who = of(agents = lynxIBMrun$bornLynx[[y]], var = "who")))
+                                        who = of(agents = NLwith(agents=lynxIBMrun$bornLynx[[y]],var = "pop",val = popAlpsJura), var = "who")))
       
     }
     # Territories of resident lynx
     if(NLcount(agents = lynxIBMrun$resLynx[[y]]) > 0 & NLcount(agents = lynxIBMrun$outputLynx[[y + 1]]) > 0){
-
+      
       # Separate male and female territories
       # Females
       resFem <- NLwith(agents = lynxIBMrun$resLynx[[y]], var = "sex", val = "F")
@@ -432,12 +433,12 @@ for(i in 1:length(listSim)){ # for each simulation run
                                          terrNum = terrPol@data)
         # Resident females
         terrResFem <- of(world = lynxIBMrun$outputTerrMap[[y + 1]],
-                          agents = patchHere(world = lynxIBMrun$outputTerrMap[[y + 1]], turtles = resFem))
+                         agents = patchHere(world = lynxIBMrun$outputTerrMap[[y + 1]], turtles = resFem))
         terrResFem2 <- merge(as.data.frame(terrResFem), centroidTerr, by.x = "terrResFem", by.y = "habMap")
         terrResFem2 <- terrResFem2[match(terrResFem, terrResFem2[,"terrResFem"]),]
         resInd <- rbind(resInd, 
-                         cbind.data.frame(xcor2 = terrResFem2[,"xcor"], ycor2 = terrResFem2[,"ycor"],
-                                          who = of(agents = resFem, var = "who")))
+                        cbind.data.frame(xcor2 = terrResFem2[,"xcor"], ycor2 = terrResFem2[,"ycor"],
+                                         who = of(agents = resFem, var = "who")))
         
       }
       # Males
@@ -474,12 +475,12 @@ for(i in 1:length(listSim)){ # for each simulation run
   bornResInd <- merge(bornInd, resInd, by = "who", all = TRUE)
   bornResInd <- na.omit(bornResInd)
   bornResInd$dist <- spDists(x = spTransform(SpatialPoints(coords = cbind(pxcor = bornResInd$xcor, pycor = bornResInd$ycor),
-                                               proj4string = habMapSpaDES@crs),
+                                                           proj4string = habMapSpaDES@crs),
                                              "+proj=longlat +ellps=WGS84"),
-                            y = spTransform(SpatialPoints(coords = cbind(pxcor = bornResInd$xcor2, pycor = bornResInd$ycor2),
-                                              proj4string = habMapSpaDES@crs),
-                                            "+proj=longlat +ellps=WGS84"),
-                            diagonal = TRUE)
+                             y = spTransform(SpatialPoints(coords = cbind(pxcor = bornResInd$xcor2, pycor = bornResInd$ycor2),
+                                                           proj4string = habMapSpaDES@crs),
+                                             "+proj=longlat +ellps=WGS84"),
+                             diagonal = TRUE)
   dispDist <- c(dispDist, bornResInd$dist[!is.na(bornResInd$dist)])
   
   print(i)
