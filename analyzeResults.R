@@ -6,6 +6,7 @@ library(Rmisc)
 library(raster)
 library(mapview)
 library(rgeos)
+library(Hmisc)
 
 #############################
 ## Analyze the simulations ##
@@ -79,6 +80,43 @@ ggplot(allPopSum, aes(x=year, y=r, colour=Populations)) +
   geom_point() +
   annotate("rect", xmin = -Inf, xmax = 10, ymin = -Inf, ymax = Inf, alpha = .7) +
   labs(x ="Years simulated", y = "Population growth rates")
+
+
+################
+## Extinxtion ##
+################
+# Calculate the proportion of simulations reaching 0 individual per population
+AlpsPVA <- cbind.data.frame(PVA = numeric((lastYear+1)), lower = numeric((lastYear+1)), upper = numeric((lastYear+1)))
+JuraPVA <- cbind.data.frame(PVA = numeric((lastYear+1)), lower = numeric((lastYear+1)), upper = numeric((lastYear+1)))
+VPPVA <- cbind.data.frame(PVA = numeric((lastYear+1)), lower = numeric((lastYear+1)), upper = numeric((lastYear+1)))
+BFPVA <- cbind.data.frame(PVA = numeric((lastYear+1)), lower = numeric((lastYear+1)), upper = numeric((lastYear+1)))
+
+for(i in 1:(lastYear+1)){
+  simAlps <- allPop[allPop$pop == "Alps" & allPop$year == i, "nInd"]
+  AlpsPVA[i,] <- binconf(x=length(which(simAlps == 0)), n=length(simAlps), alpha=.05) 
+  
+  simJura <- allPop[allPop$pop == "Jura" & allPop$year == i, "nInd"]
+  JuraPVA[i,] <- binconf(x=length(which(simJura == 0)), n=length(simJura), alpha=.05) 
+  
+  simVP <- allPop[allPop$pop == "Vosges-Palatinate" & allPop$year == i, "nInd"]
+  VPPVA[i,] <- binconf(x=length(which(simVP == 0)), n=length(simVP), alpha=.05) 
+  
+  simBF <- allPop[allPop$pop == "Black Forest" & allPop$year == i, "nInd"]
+  BFPVA[i,] <- binconf(x=length(which(simBF == 0)), n=length(simBF), alpha=.05) 
+}
+
+allPopPVA <- rbind(cbind.data.frame(year = 1:(lastYear+1), Populations = "Alps", AlpsPVA),
+                   cbind.data.frame(year = 1:(lastYear+1), Populations = "Jura", JuraPVA),
+                   cbind.data.frame(year = 1:(lastYear+1), Populations = "Vosges-Palatinate", VPPVA),
+                   cbind.data.frame(year = 1:(lastYear+1), Populations = "Black Forest", BFPVA))
+
+# Plot
+ggplot(allPopPVA, aes(x=year, y=PVA, colour=Populations)) + 
+  geom_ribbon(aes(ymin=lower, ymax=upper, x=year, fill=Populations),alpha = 0.3) +
+  geom_line() +
+  geom_point() +
+  annotate("rect", xmin = -Inf, xmax = 10, ymin = -Inf, ymax = Inf, alpha = .7) +
+  labs(x ="Years simulated", y = "Extinction probability")
 
 
 ##################
@@ -172,8 +210,7 @@ for(i in 1:length(listSim)){ # for each simulation run
 }
 
 # Summarize the data
-movePopLong <- melt(as.data.frame(movePop), id = c("repSim", "year"))
-movePopLongDT <- data.table(movePopLong)
+movePopLongDT <- melt(setDT(as.data.frame(movePop)), id = c("repSim", "year"))
 # Calculate the cumulative sum of the movement over the years per simulation and per variable (=pair of populations with a direction)
 movePopLongDT[, Cum.Sum := cumsum(value), by=list(repSim, variable)] 
 # Calculte the mean and 95% confidence intervals per year and per variable
@@ -244,6 +281,7 @@ terrOccMapRas[] <- of(world = terrOccMap, agents = patches(terrOccMap)) / nSim
 terrOccMapRas[terrOccMapRas == 0] <- NA
 # Plot the territory occupancy with the country borders
 plot(terrOccMapRas)
+pays <- shapefile("appendix_lynxIBM/module/inputs/countryBorders.shp")
 plot(pays, add = TRUE)
 
 
@@ -277,10 +315,10 @@ for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
       } else {
         deadLynxColl <- NLwith(agents = lynxIBMrun$deadLynxColl[[y]], var = "pop", val = popName)
       }
-      if(NLcount(lynxIBMrun$deadLynxNoColl[[y]]) == 0){
+      if(NLcount(lynxIBMrun$deadLynxNoColl[[y]] & NLcount(lynxIBMrun$deadOldLynx[[y]])) == 0){ # add the old lynx
         deadLynxNoColl <- noTurtles()
       } else {
-        deadLynxNoColl <- NLwith(agents = lynxIBMrun$deadLynxNoColl[[y]], var = "pop", val = popName)
+        deadLynxNoColl <- NLwith(agents = turtleSet(lynxIBMrun$deadLynxNoColl[[y]], lynxIBMrun$deadOldLynx[[y]]), var = "pop", val = popName)
       }
       if(NLcount(lynxIBMrun$outputLynx[[y]]) == 0){
         outputLynx <- noTurtles()
@@ -306,37 +344,16 @@ for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
       if(NLcount(deadLynxColl) == 0){
         nCollRes <- 0
       } else {
-        lynxResColl <- NLwith(agents = deadLynxColl, var = "status", val = "res")
-        nCollRes <- NLcount(agents = lynxResColl)
+        nCollRes <- NLcount(agents = NLwith(agents = deadLynxColl, var = "status", val = "res"))
       }
-      
+
       # Deaths other than by collisions - Residents
       if(NLcount(deadLynxNoColl) == 0){
-        lynxResNoColl <- noTurtles()
         nNoCollRes <- 0
       } else {
-        lynxResNoColl <- NLwith(agents = deadLynxNoColl, var = "status", val = "res")
-        nNoCollRes <- NLcount(agents = lynxResNoColl)
+        nNoCollRes <- NLcount(agents = NLwith(agents = deadLynxNoColl, var = "status", val = "res"))
       }
-      # For the residents, some may have die from both sources, so assign randomly one mortality
-      if(nCollRes > 0 & nNoCollRes > 0){
-        lynxBoth <- intersect(of(agents = lynxResColl, var = "who"), of(agents = lynxResNoColl, var = "who"))
-        if(length(lynxBoth) > 0){
-          randomColl <- rbinom(n = length(lynxBoth), size = 1, prob = 0.5)
-          
-          lynxResColl <- NLwith(agents = lynxResColl, var = "who", 
-                                val = of(agents = lynxResColl, var = "who")[!of(agents = lynxResColl, var = "who") %in% lynxBoth[which(randomColl == 0)]])
-          nCollRes <- NLcount(agents = lynxResColl)
-          ageDeath <- c(ageDeath, of(agents = lynxResColl, var = "age"))
-          
-          lynxResNoColl <- NLwith(agents = lynxResNoColl, var = "who", 
-                                  val = of(agents = lynxResNoColl, var = "who")[!of(agents = lynxResNoColl, var = "who") %in% lynxBoth[which(randomColl == 1)]])
-          nNoCollRes <- NLcount(agents = lynxResNoColl)
-          ageDeath <- c(ageDeath, of(agents = lynxResNoColl, var = "age"))
-          
-        }
-      } 
-      
+
       # Number of individuals at the beginning of the yearly time step
       if(NLcount(outputLynx) != 0){
         nDisp <- NLcount(agents = NLwith(agents = outputLynx,
@@ -385,8 +402,8 @@ mean(rNoCollRes[1:3])
 # Dispersal distance
 dispDist <- c()
 # Use a raster to transfer the territories on it to extract the centroid
-habMapSpaDES <- raster("C:/Users/Bauduin/Documents/GitHub/appendix_lynxIBM/module/inputs/habMap.tif")
-popAlpsJura <- "Jura" # "Jura" or "Alps"
+habMapSpaDES <- raster("appendix_lynxIBM/module/inputs/habMap.tif")
+popAlpsJura <- "Alps" # "Jura" or "Alps"
 
 for(i in 1:length(listSim)){ # for each simulation run
   load(paste0(pathFiles, "/", listSim[i]))
@@ -486,7 +503,49 @@ for(i in 1:length(listSim)){ # for each simulation run
   print(i)
 }
 
-# Dispersal distance summary
 summary(dispDist)
 hist(dispDist, xlab = "Distance (km)", main = "Dispersal distance")
 
+
+# Dispersal time
+dispTime <- c()
+
+for(i in 1:length(listSim)){ # for each simulation run
+  load(paste0(pathFiles, "/", listSim[i]))
+  
+  # Which day the dispersers became residents
+  timeRes <- lynxIBMrun$timeRes
+  timeRes <- timeRes[timeRes$year > 1.000010, ] # remove the first establishment at the beginning of the simulation
+  dispTime <- c(dispTime, timeRes$time)
+}
+
+summary(dispTime)
+
+# Reproduction rate
+pRepro <- numeric()
+
+for(i in 1:length(listSim)){ # for each simulation run
+  load(paste0(pathFiles, "/", listSim[i]))
+  
+  resInd <- lynxIBMrun$resInd # resident individuals
+  nKittyBorn <- lynxIBMrun$nKittyBorn # number of kittens produced per reproducing female
+  
+  nFemRes <- rep(0, length(resInd) - 1)
+  nKitty <- rep(0, length(resInd) - 1)
+  
+  for(j in 2:length(resInd)){ # no resident at the beginnin of the first year
+    # Number of resident females that have a male associated (i.e., which could reproduce)
+    nFemRes[j-1] <- NLcount(agents = NLwith(agents = resInd[[j]], var = "maleID", val = 1:1000000))
+  }
+  
+  for(j in 2:length(nKittyBorn)){ # no reproduction on the first year
+    # Number of females which actually produced newborns
+    nKitty[j-1] <- length(which(nKittyBorn[[j]] != 0))
+  }
+  
+  # Reproduction rate
+  pRepro <- c(pRepro, nKitty / nFemRes)
+  print(i)
+}
+  
+summary(pRepro)
