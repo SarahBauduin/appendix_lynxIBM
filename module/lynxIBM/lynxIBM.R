@@ -22,7 +22,7 @@ defineModule(sim, list(
     defineParameter(".plotInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between plot events"),
     defineParameter(".saveInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first save event should occur"),
     defineParameter(".saveInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between save events"),
-    defineParameter("pRepro", "numeric", 0.81, NA, NA, "Probability of reproduction for concerned females"),
+    defineParameter("pRepro", "numeric", 0.99, NA, NA, "Probability of reproduction for concerned females - Parameter calibrated with simulations"),
     defineParameter("nKittyYoungF", "numeric", c(1, 2), NA, NA, "Number of kittens young females can have if they do reproduce"),
     defineParameter("pKittyYoungF", "numeric", c(0.5, 0.5), NA, NA, "Probabilities for young females to have nKittyYoungF"),
     defineParameter("maxAgeYoungF", "numeric", 11, NA, NA, "Age maximum to be considered 'young female' for reproduction"),
@@ -30,21 +30,21 @@ defineModule(sim, list(
     defineParameter("pKittyOldF", "numeric", c(0.5, 0.5), NA, NA, "Probabilities for old females to have nKittyOldF"),
     defineParameter("minAgeReproF", "numeric", 2, NA, NA, "Age minimum for females to reproduce"),
     defineParameter("minAgeReproM", "numeric", 3, NA, NA, "Age minimum for males to reproduce"),
-    defineParameter("pMortResAlps", "numeric", 0.21, NA, NA, "Fixed annual probability of mortality for residents in the Alps"),
-    defineParameter("pMortResJura", "numeric", 0.21, NA, NA, "Fixed annual probability of mortality for residents in the Jura"),
-    defineParameter("pMortResVosgesPalatinate", "numeric", 0.21, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate"),
-    defineParameter("pMortResBlackForest", "numeric", 0.21, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest"),
+    defineParameter("pMortResAlps", "numeric", 0.175, NA, NA, "Fixed annual probability of mortality for residents in the Alps - Parameter calibrated with simulations"),
+    defineParameter("pMortResJura", "numeric", 0.175, NA, NA, "Fixed annual probability of mortality for residents in the Jura - Parameter calibrated with simulations"),
+    defineParameter("pMortResVosgesPalatinate", "numeric", 0.175, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate - Parameter calibrated with simulations"),
+    defineParameter("pMortResBlackForest", "numeric", 0.175, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest - Parameter calibrated with simulations"),
     defineParameter("ageMax", "numeric", 20, NA, NA, "Age maximum individuals can be"),
     defineParameter("xPs", "numeric", 11, NA, NA, "Exponent of power function to define the daily step distribution"),
     defineParameter("sMaxPs", "numeric", 45, NA, NA, "Maximum number of intraday movement steps"),
     defineParameter("pMat", "numeric", 0.03, NA, NA, "Probability of stepping into matrix cells"),
     defineParameter("pCorr", "numeric", 0.5, NA, NA, "Movement correlation probability"),
-    defineParameter("pMortDispAlps", "numeric", 0.00115, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps"),
-    defineParameter("pMortDispJura", "numeric", 0.00115, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura"),
-    defineParameter("pMortDispVosgesPalatinate", "numeric", 0.00115, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate"),
-    defineParameter("pMortDispBlackForest", "numeric", 0.00115, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest"),
-    defineParameter("corrFactorRes", "numeric", 8, NA, NA, "Correction factor for road mortality risk for residents"),
-    defineParameter("corrFactorDisp", "numeric", 10, NA, NA, "Correction factor for road mortality risk for dispersers"),
+    defineParameter("pMortDispAlps", "numeric", 0.00105, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps - Parameter calibrated with simulations"),
+    defineParameter("pMortDispJura", "numeric", 0.00105, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura - Parameter calibrated with simulations"),
+    defineParameter("pMortDispVosgesPalatinate", "numeric", 0.00105, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate - Parameter calibrated with simulations"),
+    defineParameter("pMortDispBlackForest", "numeric", 0.00105, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest - Parameter calibrated with simulations"),
+    defineParameter("corrFactorRes", "numeric", 8.5, NA, NA, "Correction factor for road mortality risk for residents - Parameter calibrated with simulations"),
+    defineParameter("corrFactorDisp", "numeric", 9.5, NA, NA, "Correction factor for road mortality risk for dispersers - Parameter calibrated with simulations"),
     defineParameter("nMatMax", "numeric", 10, NA, NA, "Maximum number of consecutive steps within which the individual needs to find dispsersal habitat"),
     defineParameter("coreTerrSizeFAlps", "numeric", 97, NA, NA, "Core size for a female territory (km2) in the Alps"),
     defineParameter("coreTerrSizeFJura", "numeric", 126, NA, NA, "Core size for a female territory (km2) in the Jura"),
@@ -79,6 +79,7 @@ doEvent.lynxIBM = function(sim, eventTime, eventType, debug = FALSE) {
       #sim <- scheduleEvent(sim, start(sim, "year"), "lynxIBM", "yearBeg")
       sim <- scheduleEvent(sim, start(sim, "year") + 0.00001, "lynxIBM", "daily")
       sim <- scheduleEvent(sim, time(sim, "year") + 0.99999, "lynxIBM", "yearEnd")
+      sim$day <- 1
     },
     plot = {
       
@@ -121,6 +122,7 @@ doEvent.lynxIBM = function(sim, eventTime, eventType, debug = FALSE) {
       }
       sim <- saveSim(sim)
       sim <- scheduleEvent(sim, time(sim, "year") + 1, "lynxIBM", "yearEnd")
+      sim$day <- 1
     },
     daily = {
       
@@ -130,6 +132,7 @@ doEvent.lynxIBM = function(sim, eventTime, eventType, debug = FALSE) {
         }
       }
       sim <- scheduleEvent(sim, time(sim, "year") + 1/365, "lynxIBM", "daily")
+      sim$day <- sim$day + 1
     },
     warning(paste("Undefined event type: '", current(sim)[1, "eventType", with = FALSE],
                   "' in module '", current(sim)[1, "moduleName", with = FALSE], "'", sep = ""))
@@ -295,12 +298,17 @@ initSim <- function(sim) {
   sim$parentsRepro <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # reproducing parents each year
   sim$deadLynxColl <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # dead lynx by collisions each year
   sim$deadLynxNoColl <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # dead lynx other than by collision each year
+  sim$deadOldLynx <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # dead lynx because of old age each year
   sim$resLynx <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # individuals becoming resident each year
+  sim$timRes <- data.frame(who = numeric(), year = numeric(), time = numeric()) # at which time individuals became resident
   sim$deadDisp <- data.frame(nDisp = numeric(), nDispDeadColl = numeric(), nDispDeadDaily = numeric(), time = numeric()) # how many lynx died during dispersal
   # Individuals that will disperse the following year
   sim$dispOfTheYear <- NLwith(agents = sim$lynx, var = "status", val = "disp")
   # Individuals that can reproduce (i.e., already resident at the beginning of the year)
-  sim$resInd <- other(agents = sim$lynx, except = sim$dispOfTheYear)
+  sim$resInd <- rep(list(sim$lynx[0, ]), times(sim)$end[1])
+  sim$resInd[[1]] <- other(agents = sim$lynx, except = sim$dispOfTheYear)
+  sim$nKittyBorn <- list()
+  
   
   return(invisible(sim))
 }
@@ -309,7 +317,7 @@ initSim <- function(sim) {
 reproduction <- function(sim) {
 
   # Resident females with associated resident males can reproduce
-  infoLynx <- sim$resInd@.Data[, c("who", "age", "maleID"), drop = FALSE]
+  infoLynx <- sim$resInd[[time(sim, "year")[1]]]@.Data[, c("who", "age", "maleID"), drop = FALSE]
   # Adding regarding S?ugetierkunde 1991 publication on sexual maturation in boreal lynx
   # Males of 1 3/4 (i.e., 2 years old) are 50% fertile, they are all fertile at 2 3/4 (i.e., 3 years old)
   # Females of 3/4 are 50% fertile (i.e., 1 year old), they are all fertile at 1 3/4 (i.e., 2 years old)
@@ -335,7 +343,8 @@ reproduction <- function(sim) {
     nKittyBorn <- numeric(length(ageFemales))
     nKittyBorn[ageFemales <= P(sim)$maxAgeYoungF] <- nKittyBornYoungF
     nKittyBorn[ageFemales > P(sim)$maxAgeYoungF] <- nKittyBornOldF
-
+    sim$nKittyBorn[[time(sim, "year")[1]]] <- nKittyBorn
+    
     # Test
     if(P(sim)$testON == TRUE) {
       expect_equivalent(length(momsID), length(nKittyBorn))
@@ -403,12 +412,19 @@ mortality <- function(sim) {
   # Need to remove the dispersing of the year
   resident <- NLwith(agents = other(agents = sim$lynx, except = sim$dispOfTheYear),
                      var = "status", val = "res")
+  oldLynxID <- numeric()
+  deathResID <- numeric()
+  deathResRdID <- numeric()
+  
   if(NLcount(resident) != 0) {
-    residentID <- resident@.Data[, "who"]
-    nRes <- length(residentID)
-    
+
     # Lynx cannot be older than ageMax
     oldLynx <- NLwith(agents = resident, var = "age", val = P(sim)$ageMax)
+    oldLynxID <- of(agents = oldLynx, var = "who")
+    
+    # Remaining residents
+    resident <- other(agents = resident, except = oldLynx)
+    if(NLcount(resident) != 0) {
     
     # Residents dying from annual fixed mortality
     # Fixed mortality for residents different regarding their population (when data is available)
@@ -428,6 +444,11 @@ mortality <- function(sim) {
     deathRes[popResident == 3] <- deathResVosges
     deathRes[popResident == 4] <- deathResBlackForest
 
+    # Remaining alive resident
+    deathResID <- of(agents = resident, var = "who")[deathRes == 1]
+    resident <- other(agents = resident, except = turtle(turtles = resident, who = deathResID))
+    if(NLcount(resident) != 0) {
+    
     # Residents dying from spatial mortality dependent on the road density in their territory
     infoRes <- resident@.Data[, c("who", "maleID", "rdMortTerr"), drop = FALSE]
     # For males => mean value of the female territories they occupy
@@ -442,11 +463,20 @@ mortality <- function(sim) {
     # Add the correction factor for the residents
     probCollRes <- (infoRes[, "rdMortTerr"]) * P(sim)$corrFactorRes
     probCollRes <- ifelse(probCollRes > 1, 1, probCollRes)
-    deathResRd <- rbinom(n = nRes, size = 1, prob = probCollRes)
+    deathResRd <- rbinom(n = NLcount(resident), size = 1, prob = probCollRes)
     sim$nColl <- rbind(sim$nColl, data.frame(ncoll = sum(deathResRd), time = floor(time(sim))[1]))
+    deathResRdID <- of(agents = resident, var = "who")[deathResRd == 1]
+    
+    }
+    }
     
     # Resident individuals that will die
-    deadWhoRes <- unique(c(residentID[deathRes == 1 | deathResRd == 1], of(agents = oldLynx, var = "who")))
+    deadWhoRes <- c(oldLynxID, deathResID, deathResRdID)
+    # Test
+    if(P(sim)$testON == TRUE) {
+      # Individuals should not die from two sources of mortality
+      expect_equivalent(length(deadWhoRes), length(unique(deadWhoRes)))
+    }
     
     # Empty territories belonging to dead females
     cellDeadFem <- NLwith(world = sim$terrMap, agents = patches(sim$terrMap), val = deadWhoRes)
@@ -486,14 +516,18 @@ mortality <- function(sim) {
     if(P(sim)$testON == TRUE) {
       countPop <- NLcount(sim$lynx)
     }
-    
+
     # Remove individuals from the population
-    if(length(residentID[deathResRd == 1]) != 0){
-      sim$deadLynxColl[[time(sim, "year")[1]]] <- turtleSet(sim$deadLynxColl[[time(sim, "year")[1]]], turtle(turtles = sim$lynx, who = residentID[deathResRd == 1])) # add the new lynx dead by collisions
+    if(length(deathResRdID) != 0){
+      sim$deadLynxColl[[time(sim, "year")[1]]] <- turtleSet(sim$deadLynxColl[[time(sim, "year")[1]]], turtle(turtles = sim$lynx, who = deathResRdID)) # add the new lynx dead by collisions
     }
-    if(length(c(residentID[deathRes == 1 & deathResRd == 0], kittenDieWho)) != 0){
-      sim$deadLynxNoColl[[time(sim, "year")[1]]] <- turtleSet(sim$deadLynxNoColl[[time(sim, "year")[1]]], turtle(turtles = sim$lynx, who = c(residentID[deathRes == 1 & deathResRd == 0], kittenDieWho))) # add the new lynx dead other than by collisions
+    if(length(deathResID) != 0){
+      sim$deadLynxNoColl[[time(sim, "year")[1]]] <- turtleSet(sim$deadLynxNoColl[[time(sim, "year")[1]]], turtle(turtles = sim$lynx, who = deathResID)) # add the new lynx dead other than by collisions
     }
+    if(length(oldLynxID) != 0){
+      sim$deadOldLynx[[time(sim, "year")[1]]] <- turtleSet(sim$deadOldLynx[[time(sim, "year")[1]]], turtle(turtles = sim$lynx, who = oldLynxID)) # add the new lynx dead of old age
+    }
+    
     sim$lynx <- die(turtles = sim$lynx, who = c(deadWhoRes, kittenDieWho))
     
     # Test
@@ -1127,6 +1161,7 @@ searchTerritory <- function(sim) {
             # Save the data about the new residents
             if(length(searchingFemID) != 0){
               sim$resLynx[[time(sim, "year")[1]]] <- turtleSet(sim$resLynx[[time(sim, "year")[1]]], turtle(turtles = sim$lynx, who = searchingFemID))
+              sim$timeRes <- rbind(sim$timeRes, data.frame(who = searchingFemID, year =  time(sim, "year")[1], time = sim$day))
             }
             
             # Male around to claim the female?
@@ -1215,6 +1250,7 @@ searchTerritory <- function(sim) {
             # However, turtleSet() only keep the first instance so there are no duplicates in the output resLynx, 
             # only the first time will be recorded.
             sim$resLynx[[time(sim, "year")[1]]] <- turtleSet(sim$resLynx[[time(sim, "year")[1]]], turtle(turtles = sim$lynx, who = of(agents = maleClaiming, var = "who")))
+            sim$timeRes <- rbind(sim$timeRes, data.frame(who = of(agents = maleClaiming, var = "who"), year =  time(sim, "year")[1], time = sim$day))
           }
           
           # Females around to claim?
@@ -1303,7 +1339,7 @@ demography <- function(sim) {
   sim$dispOfTheYear <- NLwith(agents = sim$lynx, var = "status", val = "disp")
   
   # Individuals that can reproduce (i.e., already resident at the beginning of the year)
-  sim$resInd <- other(agents = sim$lynx, except = sim$dispOfTheYear)
+  sim$resInd[[time(sim, "year")[1] + 1]] <- other(agents = sim$lynx, except = sim$dispOfTheYear)
   
   return(invisible(sim))
 }
