@@ -24,6 +24,148 @@ gg_color <- function(n) {
 }
 
 
+#######################
+## Model calibration ##
+#######################
+### Resulting mortality rates
+rCollDisp <- c()
+rCollRes <- c()
+rNoCollDisp <- c()
+rNoCollRes <- c()
+
+for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
+  
+  # Realized mortality rates for residents and dispersers by collision or otherwise
+  deathLynx <- cbind(repSim = rep(1:nSim, each = lastYear), year = rep(1:(lastYear), nSim), 
+                     nCollDisp = rep(0, (lastYear)*nSim), nCollRes = rep(0, (lastYear)*nSim), 
+                     nNoCollDisp = rep(0, (lastYear)*nSim), nNoCollRes = rep(0, (lastYear)*nSim),
+                     nDisp = rep(0, (lastYear)*nSim), nRes = rep(0, (lastYear)*nSim),
+                     rCollDisp = rep(0, (lastYear)*nSim), rCollRes = rep(0, (lastYear)*nSim), 
+                     rNoCollDisp = rep(0, (lastYear)*nSim), rNoCollRes = rep(0, (lastYear)*nSim))
+  
+  for(i in 1:length(listSim)){ # for each simulation run
+    load(paste0(pathFiles, "/", listSim[i]))
+    
+    for(y in 1:(lastYear)){
+      
+      if(NLcount(lynxIBMrun$deadLynxColl[[y]]) == 0){
+        deadLynxColl <- noTurtles()
+      } else {
+        deadLynxColl <- NLwith(agents = lynxIBMrun$deadLynxColl[[y]], var = "pop", val = popName)
+      }
+      if(NLcount(lynxIBMrun$deadLynxNoColl[[y]] & NLcount(lynxIBMrun$deadOldLynx[[y]])) == 0){ # add the old lynx
+        deadLynxNoColl <- noTurtles()
+      } else {
+        deadLynxNoColl <- NLwith(agents = turtleSet(lynxIBMrun$deadLynxNoColl[[y]], lynxIBMrun$deadOldLynx[[y]]), var = "pop", val = popName)
+      }
+      if(NLcount(lynxIBMrun$outputLynx[[y]]) == 0){
+        outputLynx <- noTurtles()
+      } else {
+        outputLynx <- NLwith(agents = lynxIBMrun$outputLynx[[y]], var = "pop", val = popName)
+      }
+      
+      # Collisions - Dispersers
+      if(NLcount(deadLynxColl) == 0){
+        nCollDisp <- 0
+      } else {
+        nCollDisp <- NLcount(agents = NLwith(agents = deadLynxColl, var = "status", val = "disp"))
+      }
+      
+      # Deaths other than by collisions - Dispersers
+      if(NLcount(deadLynxNoColl) == 0){
+        nNoCollDisp <- 0
+      } else {
+        nNoCollDisp <- NLcount(agents = NLwith(agents = deadLynxNoColl, var = "status", val = "disp"))
+      }
+      
+      # Collisions - Residents
+      if(NLcount(deadLynxColl) == 0){
+        nCollRes <- 0
+      } else {
+        nCollRes <- NLcount(agents = NLwith(agents = deadLynxColl, var = "status", val = "res"))
+      }
+      
+      # Deaths other than by collisions - Residents
+      if(NLcount(deadLynxNoColl) == 0){
+        nNoCollRes <- 0
+      } else {
+        nNoCollRes <- NLcount(agents = NLwith(agents = deadLynxNoColl, var = "status", val = "res"))
+      }
+      
+      # Number of individuals at the beginning of the yearly time step
+      if(NLcount(outputLynx) != 0){
+        nDisp <- NLcount(agents = NLwith(agents = outputLynx,
+                                         var = "status", val = "disp"))
+        nRes <- NLcount(agents = NLwith(agents = outputLynx,
+                                        var = "status", val = "res"))
+      } else {
+        nDisp <- 0
+        nRes <- 0
+      }
+      
+      # Mortality rates
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nCollDisp"] <- nCollDisp
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nCollRes"] <- nCollRes
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nNoCollDisp"] <- nNoCollDisp
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nNoCollRes"] <- nNoCollRes
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nDisp"] <- nDisp
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nRes"] <- nRes
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollDisp"] <- nCollDisp / nDisp
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollRes"] <- nCollRes / nRes
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rNoCollDisp"] <- nNoCollDisp / nDisp
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rNoCollRes"] <- nNoCollRes / nRes
+      
+    }
+    print(i)
+  }
+  
+  
+  # We need to remove the time when there were no more individuals
+  # and remove the first year when we removed the mortality
+  rCollDisp <- c(rCollDisp, mean(deathLynx[deathLynx[, "nDisp"] != 0, "rCollDisp"], na.rm = TRUE))
+  rCollRes <- c(rCollRes, mean(deathLynx[deathLynx[, "nRes"] != 0, "rCollRes"], na.rm = TRUE))
+  rNoCollDisp <- c(rNoCollDisp, mean(deathLynx[deathLynx[, "nDisp"] != 0, "rNoCollDisp"], na.rm = TRUE))
+  rNoCollRes <- c(rNoCollRes, mean(deathLynx[deathLynx[, "nRes"] != 0, "rNoCollRes"], na.rm = TRUE))
+  
+}
+
+# To calculate the mean over the populations, we remove the BlackForest
+# because there are too few individuals and it bias the mean
+mean(rCollDisp[1:3])
+mean(rCollRes[1:3])
+mean(rNoCollDisp[1:3])
+mean(rNoCollRes[1:3])
+
+### Reproduction rate
+pRepro <- numeric()
+
+for(i in 1:length(listSim)){ # for each simulation run
+  load(paste0(pathFiles, "/", listSim[i]))
+  
+  resInd <- lynxIBMrun$resInd # resident individuals
+  nKittyBorn <- lynxIBMrun$nKittyBorn # number of kittens produced per reproducing female
+  
+  nFemRes <- rep(0, length(resInd) - 1)
+  nKitty <- rep(0, length(resInd) - 1)
+  
+  for(j in 2:length(resInd)){ # no resident at the beginnin of the first year
+    # Number of resident females that have a male associated (i.e., which could reproduce)
+    nFemRes[j-1] <- NLcount(agents = NLwith(agents = resInd[[j]], var = "maleID", val = 1:1000000))
+  }
+  
+  for(j in 2:length(nKittyBorn)){ # no reproduction on the first year
+    # Number of females which actually produced newborns
+    nKitty[j-1] <- length(which(nKittyBorn[[j]] != 0))
+  }
+  
+  # Reproduction rate
+  pRepro <- c(pRepro, nKitty / nFemRes)
+  print(i)
+}
+
+summary(pRepro)
+
+
 #############################
 ## Population growth rates ##
 #############################
@@ -261,121 +403,10 @@ plot(habPol, col = "gray80", border = NA, add = TRUE)
 plot(pays, add = TRUE)
 
 
-#####################################
-## Summary metrics for calibration ##
-#####################################
-
-# Resulting mortality rates
-rCollDisp <- c()
-rCollRes <- c()
-rNoCollDisp <- c()
-rNoCollRes <- c()
-
-for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
-  
-  # Realized mortality rates for residents and dispersers by collision or otherwise
-  deathLynx <- cbind(repSim = rep(1:nSim, each = lastYear), year = rep(1:(lastYear), nSim), 
-                     nCollDisp = rep(0, (lastYear)*nSim), nCollRes = rep(0, (lastYear)*nSim), 
-                     nNoCollDisp = rep(0, (lastYear)*nSim), nNoCollRes = rep(0, (lastYear)*nSim),
-                     nDisp = rep(0, (lastYear)*nSim), nRes = rep(0, (lastYear)*nSim),
-                     rCollDisp = rep(0, (lastYear)*nSim), rCollRes = rep(0, (lastYear)*nSim), 
-                     rNoCollDisp = rep(0, (lastYear)*nSim), rNoCollRes = rep(0, (lastYear)*nSim))
-  
-  for(i in 1:length(listSim)){ # for each simulation run
-    load(paste0(pathFiles, "/", listSim[i]))
-    
-    for(y in 1:(lastYear)){
-      
-      if(NLcount(lynxIBMrun$deadLynxColl[[y]]) == 0){
-        deadLynxColl <- noTurtles()
-      } else {
-        deadLynxColl <- NLwith(agents = lynxIBMrun$deadLynxColl[[y]], var = "pop", val = popName)
-      }
-      if(NLcount(lynxIBMrun$deadLynxNoColl[[y]] & NLcount(lynxIBMrun$deadOldLynx[[y]])) == 0){ # add the old lynx
-        deadLynxNoColl <- noTurtles()
-      } else {
-        deadLynxNoColl <- NLwith(agents = turtleSet(lynxIBMrun$deadLynxNoColl[[y]], lynxIBMrun$deadOldLynx[[y]]), var = "pop", val = popName)
-      }
-      if(NLcount(lynxIBMrun$outputLynx[[y]]) == 0){
-        outputLynx <- noTurtles()
-      } else {
-        outputLynx <- NLwith(agents = lynxIBMrun$outputLynx[[y]], var = "pop", val = popName)
-      }
-      
-      # Collisions - Dispersers
-      if(NLcount(deadLynxColl) == 0){
-        nCollDisp <- 0
-      } else {
-        nCollDisp <- NLcount(agents = NLwith(agents = deadLynxColl, var = "status", val = "disp"))
-      }
-      
-      # Deaths other than by collisions - Dispersers
-      if(NLcount(deadLynxNoColl) == 0){
-        nNoCollDisp <- 0
-      } else {
-        nNoCollDisp <- NLcount(agents = NLwith(agents = deadLynxNoColl, var = "status", val = "disp"))
-      }
-      
-      # Collisions - Residents
-      if(NLcount(deadLynxColl) == 0){
-        nCollRes <- 0
-      } else {
-        nCollRes <- NLcount(agents = NLwith(agents = deadLynxColl, var = "status", val = "res"))
-      }
-
-      # Deaths other than by collisions - Residents
-      if(NLcount(deadLynxNoColl) == 0){
-        nNoCollRes <- 0
-      } else {
-        nNoCollRes <- NLcount(agents = NLwith(agents = deadLynxNoColl, var = "status", val = "res"))
-      }
-
-      # Number of individuals at the beginning of the yearly time step
-      if(NLcount(outputLynx) != 0){
-        nDisp <- NLcount(agents = NLwith(agents = outputLynx,
-                                         var = "status", val = "disp"))
-        nRes <- NLcount(agents = NLwith(agents = outputLynx,
-                                        var = "status", val = "res"))
-      } else {
-        nDisp <- 0
-        nRes <- 0
-      }
-      
-      # Mortality rates
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nCollDisp"] <- nCollDisp
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nCollRes"] <- nCollRes
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nNoCollDisp"] <- nNoCollDisp
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nNoCollRes"] <- nNoCollRes
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nDisp"] <- nDisp
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nRes"] <- nRes
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollDisp"] <- nCollDisp / nDisp
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollRes"] <- nCollRes / nRes
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rNoCollDisp"] <- nNoCollDisp / nDisp
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rNoCollRes"] <- nNoCollRes / nRes
-      
-    }
-    print(i)
-  }
-  
-  
-  # We need to remove the time when there were no more individuals
-  # and remove the first year when we removed the mortality
-  rCollDisp <- c(rCollDisp, mean(deathLynx[deathLynx[, "nDisp"] != 0, "rCollDisp"], na.rm = TRUE))
-  rCollRes <- c(rCollRes, mean(deathLynx[deathLynx[, "nRes"] != 0, "rCollRes"], na.rm = TRUE))
-  rNoCollDisp <- c(rNoCollDisp, mean(deathLynx[deathLynx[, "nDisp"] != 0, "rNoCollDisp"], na.rm = TRUE))
-  rNoCollRes <- c(rNoCollRes, mean(deathLynx[deathLynx[, "nRes"] != 0, "rNoCollRes"], na.rm = TRUE))
-  
-}
-
-# To calculate the mean over the populations, we remove the BlackForest
-# because there are too few individuals and it bias the mean
-mean(rCollDisp[1:3])
-mean(rCollRes[1:3])
-mean(rNoCollDisp[1:3])
-mean(rNoCollRes[1:3])
-
-
-# Dispersal distance
+#####################
+## Summary metrics ##
+#####################
+### Dispersal distance
 dispDist <- c()
 # Use a raster to transfer the territories on it to extract the centroid
 habMapSpaDES <- raster("appendix_lynxIBM/module/inputs/habMap.tif")
@@ -482,32 +513,16 @@ for(i in 1:length(listSim)){ # for each simulation run
 summary(dispDist)
 hist(dispDist, xlab = "Distance (km)", main = "Dispersal distance")
 
-
-# Reproduction rate
-pRepro <- numeric()
+### Dispersal time
+  dispTime <- c()
 
 for(i in 1:length(listSim)){ # for each simulation run
   load(paste0(pathFiles, "/", listSim[i]))
   
-  resInd <- lynxIBMrun$resInd # resident individuals
-  nKittyBorn <- lynxIBMrun$nKittyBorn # number of kittens produced per reproducing female
-  
-  nFemRes <- rep(0, length(resInd) - 1)
-  nKitty <- rep(0, length(resInd) - 1)
-  
-  for(j in 2:length(resInd)){ # no resident at the beginnin of the first year
-    # Number of resident females that have a male associated (i.e., which could reproduce)
-    nFemRes[j-1] <- NLcount(agents = NLwith(agents = resInd[[j]], var = "maleID", val = 1:1000000))
-  }
-  
-  for(j in 2:length(nKittyBorn)){ # no reproduction on the first year
-    # Number of females which actually produced newborns
-    nKitty[j-1] <- length(which(nKittyBorn[[j]] != 0))
-  }
-  
-  # Reproduction rate
-  pRepro <- c(pRepro, nKitty / nFemRes)
-  print(i)
+  # Which day the dispersers became residents
+  timeRes <- lynxIBMrun$timeRes
+  timeRes <- timeRes[timeRes$year > 1.000010, ] # remove the first establishment at the beginning of the simulation
+  dispTime <- c(dispTime, timeRes$time)
 }
-  
-summary(pRepro)
+
+summary(dispTime)
