@@ -5,8 +5,8 @@ library(data.table)
 library(Rmisc)
 library(raster)
 library(mapview)
-library(rgeos)
-library(Hmisc)
+library(viridis)
+library(wesanderson)
 
 #############################
 ## Analyze the simulations ##
@@ -78,45 +78,9 @@ ggplot(allPopSum, aes(x=year, y=r, colour=Populations)) +
   geom_ribbon(aes(ymin=r-ci, ymax=r+ci, x=year, fill=Populations),alpha = 0.3) +
   geom_line() +
   geom_point() +
+  coord_cartesian(ylim=c(0, 2)) +
   annotate("rect", xmin = -Inf, xmax = 10, ymin = -Inf, ymax = Inf, alpha = .7) +
   labs(x ="Years simulated", y = "Population growth rates")
-
-
-################
-## Extinxtion ##
-################
-# Calculate the proportion of simulations reaching 0 individual per population
-AlpsPVA <- cbind.data.frame(PVA = numeric((lastYear+1)), lower = numeric((lastYear+1)), upper = numeric((lastYear+1)))
-JuraPVA <- cbind.data.frame(PVA = numeric((lastYear+1)), lower = numeric((lastYear+1)), upper = numeric((lastYear+1)))
-VPPVA <- cbind.data.frame(PVA = numeric((lastYear+1)), lower = numeric((lastYear+1)), upper = numeric((lastYear+1)))
-BFPVA <- cbind.data.frame(PVA = numeric((lastYear+1)), lower = numeric((lastYear+1)), upper = numeric((lastYear+1)))
-
-for(i in 1:(lastYear+1)){
-  simAlps <- allPop[allPop$pop == "Alps" & allPop$year == i, "nInd"]
-  AlpsPVA[i,] <- binconf(x=length(which(simAlps == 0)), n=length(simAlps), alpha=.05) 
-  
-  simJura <- allPop[allPop$pop == "Jura" & allPop$year == i, "nInd"]
-  JuraPVA[i,] <- binconf(x=length(which(simJura == 0)), n=length(simJura), alpha=.05) 
-  
-  simVP <- allPop[allPop$pop == "Vosges-Palatinate" & allPop$year == i, "nInd"]
-  VPPVA[i,] <- binconf(x=length(which(simVP == 0)), n=length(simVP), alpha=.05) 
-  
-  simBF <- allPop[allPop$pop == "Black Forest" & allPop$year == i, "nInd"]
-  BFPVA[i,] <- binconf(x=length(which(simBF == 0)), n=length(simBF), alpha=.05) 
-}
-
-allPopPVA <- rbind(cbind.data.frame(year = 1:(lastYear+1), Populations = "Alps", AlpsPVA),
-                   cbind.data.frame(year = 1:(lastYear+1), Populations = "Jura", JuraPVA),
-                   cbind.data.frame(year = 1:(lastYear+1), Populations = "Vosges-Palatinate", VPPVA),
-                   cbind.data.frame(year = 1:(lastYear+1), Populations = "Black Forest", BFPVA))
-
-# Plot
-ggplot(allPopPVA, aes(x=year, y=PVA, colour=Populations)) + 
-  geom_ribbon(aes(ymin=lower, ymax=upper, x=year, fill=Populations),alpha = 0.3) +
-  geom_line() +
-  geom_point() +
-  annotate("rect", xmin = -Inf, xmax = 10, ymin = -Inf, ymax = Inf, alpha = .7) +
-  labs(x ="Years simulated", y = "Extinction probability")
 
 
 ##################
@@ -284,10 +248,22 @@ plot(terrOccMapRas)
 pays <- shapefile("appendix_lynxIBM/module/inputs/countryBorders.shp")
 plot(pays, add = TRUE)
 
+# Include the non-used breeding habitat
+habMapSpaDES <- raster("appendix_lynxIBM/module/inputs/habMap.tif")
+habMapSpaDES[habMapSpaDES %in% c(0, 1, 2, 3)] <- NA
+habMapSpaDES[habMapSpaDES == 4] <- 1
+habMapSpaDES[!is.na(terrOccMapRas)] <- NA
+plot(habMapSpaDES)
+habPol <- rasterToPolygons(habMapSpaDES)
+# Adapt the colorscale
+plot(terrOccMapRas, col=wes_palette("Zissou1", 100, type = "continuous"))
+plot(habPol, col = "gray80", border = NA, add = TRUE)
+plot(pays, add = TRUE)
 
-#####################
-## Summary metrics ##
-#####################
+
+#####################################
+## Summary metrics for calibration ##
+#####################################
 
 # Resulting mortality rates
 rCollDisp <- c()
@@ -506,20 +482,6 @@ for(i in 1:length(listSim)){ # for each simulation run
 summary(dispDist)
 hist(dispDist, xlab = "Distance (km)", main = "Dispersal distance")
 
-
-# Dispersal time
-dispTime <- c()
-
-for(i in 1:length(listSim)){ # for each simulation run
-  load(paste0(pathFiles, "/", listSim[i]))
-  
-  # Which day the dispersers became residents
-  timeRes <- lynxIBMrun$timeRes
-  timeRes <- timeRes[timeRes$year > 1.000010, ] # remove the first establishment at the beginning of the simulation
-  dispTime <- c(dispTime, timeRes$time)
-}
-
-summary(dispTime)
 
 # Reproduction rate
 pRepro <- numeric()
