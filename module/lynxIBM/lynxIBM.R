@@ -50,10 +50,10 @@ defineModule(sim, list(
     defineParameter("coreTerrSizeFJura", "numeric", 126, NA, NA, "Core size for a female territory (km2) in the Jura"),
     defineParameter("coreTerrSizeFVosgesPalatinate", "numeric", 126, NA, NA, "Core size for a female territory (km2) in the Vosges-Palatinate"),
     defineParameter("coreTerrSizeFBlackForest", "numeric", 126, NA, NA, "Core size for a female territory (km2) in the Black Forest"),
-    defineParameter("terrSizeMAlps", "numeric", 159, NA, NA, "Territory size (95 % kernel density) for a male (km2) in the Alps"),
-    defineParameter("terrSizeMJura", "numeric", 270, NA, NA, "Territory size (95 % kernel density) for a male (km2) in the Jura"),
-    defineParameter("terrSizeMVosgesPalatinate", "numeric", 270, NA, NA, "Territory size (95 % kernel density) for a male (km2) in the Vosges-Palatinate"),
-    defineParameter("terrSizeMBlackForest", "numeric", 270, NA, NA, "Territory size (95 % kernel density) for a male (km2) in the Black Forest"),
+    defineParameter("terrSizeMAlps", "numeric", 159, NA, NA, "Territory size for a male (km2) in the Alps"),
+    defineParameter("terrSizeMJura", "numeric", 270, NA, NA, "Territory size for a male (km2) in the Jura"),
+    defineParameter("terrSizeMVosgesPalatinate", "numeric", 270, NA, NA, "Territory size for a male (km2) in the Vosges-Palatinate"),
+    defineParameter("terrSizeMBlackForest", "numeric", 270, NA, NA, "Territory size for a male (km2) in the Black Forest"),
     defineParameter("testON", "logical", TRUE, NA, NA, "Run the tests")
   ),
   inputObjects = bind_rows(
@@ -76,7 +76,6 @@ doEvent.lynxIBM = function(sim, eventTime, eventType, debug = FALSE) {
       
       sim <- scheduleEvent(sim, P(sim)$.plotInitialTime, "lynxIBM", "plot")
       sim <- scheduleEvent(sim, P(sim)$.saveInitialTime, "lynxIBM", "save")
-      #sim <- scheduleEvent(sim, start(sim, "year"), "lynxIBM", "yearBeg")
       sim <- scheduleEvent(sim, start(sim, "year") + 0.00001, "lynxIBM", "daily")
       sim <- scheduleEvent(sim, time(sim, "year") + 0.99999, "lynxIBM", "yearEnd")
       sim$day <- 1
@@ -91,19 +90,7 @@ doEvent.lynxIBM = function(sim, eventTime, eventType, debug = FALSE) {
     save = {
       
     },
-    yearBeg = {
-      
-      if(floor(time(sim))[1] != start(sim, "year")[1]){ # do not apply reproduction and mortality the first year
-        if(NLcount(sim$lynx) != 0){
-          sim <- reproduction(sim)
-        }
-        if(NLcount(sim$lynx) != 0){
-          sim <- mortality(sim) # annual mortality
-        }        
-      }
-      sim <- scheduleEvent(sim, time(sim, "year") + 1, "lynxIBM", "yearBeg")
-      
-    },
+
     yearEnd = {
       
       #####
