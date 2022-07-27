@@ -36,17 +36,18 @@ rNoCollRes <- c()
 for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
   
   # Realized mortality rates for residents and dispersers by collision or otherwise
-  deathLynx <- cbind(repSim = rep(1:nSim, each = lastYear), year = rep(1:(lastYear), nSim), 
-                     nCollDisp = rep(0, (lastYear)*nSim), nCollRes = rep(0, (lastYear)*nSim), 
-                     nNoCollDisp = rep(0, (lastYear)*nSim), nNoCollRes = rep(0, (lastYear)*nSim),
-                     nDisp = rep(0, (lastYear)*nSim), nRes = rep(0, (lastYear)*nSim),
-                     rCollDisp = rep(0, (lastYear)*nSim), rCollRes = rep(0, (lastYear)*nSim), 
-                     rNoCollDisp = rep(0, (lastYear)*nSim), rNoCollRes = rep(0, (lastYear)*nSim))
+  # Starts at year 10 (before = burn-in)
+  deathLynx <- cbind(repSim = rep(1:nSim, each = lastYear-9), year = rep(10:lastYear, nSim), 
+                     nCollDisp = rep(0, (lastYear-9)*nSim), nCollRes = rep(0, (lastYear-9)*nSim), 
+                     nNoCollDisp = rep(0, (lastYear-9)*nSim), nNoCollRes = rep(0, (lastYear-9)*nSim),
+                     nDisp = rep(0, (lastYear-9)*nSim), nRes = rep(0, (lastYear-9)*nSim),
+                     rCollDisp = rep(0, (lastYear-9)*nSim), rCollRes = rep(0, (lastYear-9)*nSim), 
+                     rNoCollDisp = rep(0, (lastYear-9)*nSim), rNoCollRes = rep(0, (lastYear-9)*nSim))
   
   for(i in 1:length(listSim)){ # for each simulation run
     load(paste0(pathFiles, "/", listSim[i]))
     
-    for(y in 1:(lastYear)){
+    for(y in 10:(lastYear)){
       
       if(NLcount(lynxIBMrun$deadLynxColl[[y]]) == 0){
         deadLynxColl <- noTurtles()
@@ -126,7 +127,7 @@ for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
   rCollRes <- c(rCollRes, mean(deathLynx[deathLynx[, "nRes"] != 0, "rCollRes"], na.rm = TRUE))
   rNoCollDisp <- c(rNoCollDisp, mean(deathLynx[deathLynx[, "nDisp"] != 0, "rNoCollDisp"], na.rm = TRUE))
   rNoCollRes <- c(rNoCollRes, mean(deathLynx[deathLynx[, "nRes"] != 0, "rNoCollRes"], na.rm = TRUE))
-  
+
 }
 
 # To calculate the mean over the populations, we remove the BlackForest
@@ -148,12 +149,12 @@ for(i in 1:length(listSim)){ # for each simulation run
   nFemRes <- rep(0, length(resInd) - 1)
   nKitty <- rep(0, length(resInd) - 1)
   
-  for(j in 2:length(resInd)){ # no resident at the beginnin of the first year
+  for(j in 10:length(resInd)){ # remove burn-in
     # Number of resident females that have a male associated (i.e., which could reproduce)
     nFemRes[j-1] <- NLcount(agents = NLwith(agents = resInd[[j]], var = "maleID", val = 1:1000000))
   }
   
-  for(j in 2:length(nKittyBorn)){ # no reproduction on the first year
+  for(j in 10:length(nKittyBorn)){ # remove burn-in
     # Number of females which actually produced newborns
     nKitty[j-1] <- length(which(nKittyBorn[[j]] != 0))
   }
