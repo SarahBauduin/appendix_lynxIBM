@@ -404,25 +404,27 @@ plot(habPol, col = "gray80", border = NA, add = TRUE)
 plot(pays, add = TRUE)
 
 
-#####################
-## Summary metrics ##
-#####################
-### Dispersal distance
-dispDist <- c()
+########################
+## Dispersal distance ##
+########################
+dispDistList <- list()
+popList <- 1
 # Use a raster to transfer the territories on it to extract the centroid
 habMapSpaDES <- raster("appendix_lynxIBM/module/inputs/habMap.tif")
-popAlpsJura <- "Alps" # "Jura" or "Alps"
 
+for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
+  dispDist <- c()
+  
 for(i in 1:length(listSim)){ # for each simulation run
   load(paste0(pathFiles, "/", listSim[i]))
   
   bornInd <- cbind.data.frame(xcor = c(), ycor = c(), who = c())
   resInd <- cbind.data.frame(xcor2 = c(), ycor2 = c(), who = c())
   
-  for(y in 2:(lastYear - 1)){ 
+  for(y in 10:(lastYear - 1)){ 
     
     # Territories where lynx were born
-    if(NLcount(agents = NLwith(agents = lynxIBMrun$bornLynx[[y]],var = "pop", val = popAlpsJura)) > 0){
+    if(NLcount(agents = NLwith(agents = lynxIBMrun$bornLynx[[y]],var = "pop", val = popName)) > 0){
       # Territory centroids
       habMapSpaDES[] <- lynxIBMrun$outputTerrMap[[y]] # transfer the territory number from the worldMatrix to a raster
       terrPol <- rasterToPolygons(habMapSpaDES, dissolve = TRUE)
@@ -432,12 +434,12 @@ for(i in 1:length(listSim)){ # for each simulation run
       # Born individuals
       terrBornInd <- of(world = lynxIBMrun$outputTerrMap[[y]],
                         agents = patchHere(world = lynxIBMrun$outputTerrMap[[y]], 
-                                           turtles = NLwith(agents=lynxIBMrun$bornLynx[[y]],var = "pop",val = popAlpsJura)))
+                                           turtles = NLwith(agents=lynxIBMrun$bornLynx[[y]],var = "pop",val = popName)))
       terrBornInd2 <- merge(as.data.frame(terrBornInd), centroidTerr, by.x = "terrBornInd", by.y = "habMap")
       terrBornInd2 <- terrBornInd2[match(terrBornInd, terrBornInd2[,"terrBornInd"]),]
       bornInd <- rbind(bornInd, 
                        cbind.data.frame(xcor = terrBornInd2[,"xcor"], ycor = terrBornInd2[,"ycor"],
-                                        who = of(agents = NLwith(agents=lynxIBMrun$bornLynx[[y]],var = "pop",val = popAlpsJura), var = "who")))
+                                        who = of(agents = NLwith(agents=lynxIBMrun$bornLynx[[y]],var = "pop",val = popName), var = "who")))
       
     }
     # Territories of resident lynx
@@ -510,19 +512,29 @@ for(i in 1:length(listSim)){ # for each simulation run
   
   print(i)
 }
+  
+  
+  dispDistList[[popList]] <- dispDist
+  popList <- popList + 1
+}  
 
-summary(dispDist)
-hist(dispDist, xlab = "Distance (km)", main = "Dispersal distance")
+summary(dispDistList[[1]]) # Alps
+summary(dispDistList[[2]]) # Jura
+summary(dispDistList[[3]]) # Vosges-Palatinate
+summary(dispDistList[[4]]) # BlackForest
 
-### Dispersal time
-  dispTime <- c()
+
+########################
+## Dispersal duration ##
+########################
+dispTime <- c()
 
 for(i in 1:length(listSim)){ # for each simulation run
   load(paste0(pathFiles, "/", listSim[i]))
   
   # Which day the dispersers became residents
   timeRes <- lynxIBMrun$timeRes
-  timeRes <- timeRes[timeRes$year > 1.000010, ] # remove the first establishment at the beginning of the simulation
+  timeRes <- timeRes[timeRes$year >= 10, ] # remove the establishment of the burn-in
   dispTime <- c(dispTime, timeRes$time)
 }
 
