@@ -7,6 +7,7 @@ library(raster)
 library(mapview)
 library(viridis)
 library(wesanderson)
+library(rgeos)
 
 #############################
 ## Analyze the simulations ##
@@ -146,17 +147,17 @@ for(i in 1:length(listSim)){ # for each simulation run
   resInd <- lynxIBMrun$resInd # resident individuals
   nKittyBorn <- lynxIBMrun$nKittyBorn # number of kittens produced per reproducing female
   
-  nFemRes <- rep(0, length(resInd) - 1)
-  nKitty <- rep(0, length(resInd) - 1)
+  nFemRes <- rep(0, length(resInd) - 10) # resInd = 51 elements
+  nKitty <- rep(0, length(resInd) - 10)
   
-  for(j in 10:length(resInd)){ # remove burn-in
-    # Number of resident females that have a male associated (i.e., which could reproduce)
-    nFemRes[j-1] <- NLcount(agents = NLwith(agents = resInd[[j]], var = "maleID", val = 1:1000000))
+  for(j in 10:(length(resInd) - 1)){ # remove burn-in
+    # Number of resident females
+    nFemRes[j-9] <- NLcount(agents = NLwith(agents = resInd[[j]], var = "sex", val = "F"))
   }
   
   for(j in 10:length(nKittyBorn)){ # remove burn-in
     # Number of females which actually produced newborns
-    nKitty[j-1] <- length(which(nKittyBorn[[j]] != 0))
+    nKitty[j-9] <- length(which(nKittyBorn[[j]] != 0))
   }
   
   # Reproduction rate
@@ -499,17 +500,22 @@ for(i in 1:length(listSim)){ # for each simulation run
   # At the end of the simulation run, merge the lynx born territory centroid 
   # with the centroid of the place where they became residents based on their ID
   # and calculate the distance
-  bornResInd <- merge(bornInd, resInd, by = "who", all = TRUE)
-  bornResInd <- na.omit(bornResInd)
-  bornResInd$dist <- spDists(x = spTransform(SpatialPoints(coords = cbind(pxcor = bornResInd$xcor, pycor = bornResInd$ycor),
-                                                           proj4string = habMapSpaDES@crs),
-                                             "+proj=longlat +ellps=WGS84"),
-                             y = spTransform(SpatialPoints(coords = cbind(pxcor = bornResInd$xcor2, pycor = bornResInd$ycor2),
-                                                           proj4string = habMapSpaDES@crs),
-                                             "+proj=longlat +ellps=WGS84"),
-                             diagonal = TRUE)
-  dispDist <- c(dispDist, bornResInd$dist[!is.na(bornResInd$dist)])
-  
+  if(nrow(bornInd) != 0){
+    
+    bornResInd <- merge(bornInd, resInd, by = "who", all = TRUE)
+    bornResInd <- na.omit(bornResInd)
+    if(nrow(bornResInd) != 0){
+      bornResInd$dist <- spDists(x = spTransform(SpatialPoints(coords = cbind(pxcor = bornResInd$xcor, pycor = bornResInd$ycor),
+                                                               proj4string = habMapSpaDES@crs),
+                                                 "+proj=longlat +ellps=WGS84"),
+                                 y = spTransform(SpatialPoints(coords = cbind(pxcor = bornResInd$xcor2, pycor = bornResInd$ycor2),
+                                                               proj4string = habMapSpaDES@crs),
+                                                 "+proj=longlat +ellps=WGS84"),
+                                 diagonal = TRUE)
+      dispDist <- c(dispDist, bornResInd$dist[!is.na(bornResInd$dist)])
+    }
+  }
+
   print(i)
 }
   
@@ -534,8 +540,58 @@ for(i in 1:length(listSim)){ # for each simulation run
   
   # Which day the dispersers became residents
   timeRes <- lynxIBMrun$timeRes
-  timeRes <- timeRes[timeRes$year >= 10, ] # remove the establishment of the burn-in
+  timeRes <- timeRes[timeRes$year >= 10, ] # remove the burn-in
   dispTime <- c(dispTime, timeRes$time)
+  # Add 365 for the individuals still dispersers at the end of the year
+  for(y in 10:(lastYear - 1)){ 
+    disp <- NLwith(agents = lynxIBMrun$outputLynx[[y]], var = "status", val = "disp")
+    notDispOfTheYear <- other(agents = disp, except = NLwith(agents = disp, var = "age", val = 2))
+    nDisp <- NLcount(notDispOfTheYear)
+    dispTime <- c(dispTime, rep(365, nDisp))
+  }
+  
+  print(i)
 }
 
 summary(dispTime)
+
+
+##############################
+## Daily dispersal distance ##
+##############################
+dailyDist <- c()
+
+for(i in 1:length(listSim)){ # for each simulation run
+  load(paste0(pathFiles, "/", listSim[i]))
+  
+  # Compile the daily dispersal distances
+  dailyDistSim <- lynxIBMrun$dailyDist
+  dailyDistSim <- dailyDistSim[dailyDistSim$year >= 10, "dailyDist"] # remove the burn-in
+  dailyDist <- c(dailyDist, dailyDistSim)
+  
+  print(i)
+}
+
+summary(dailyDist)
+
+
+#######################
+## Habitat selection ##
+#######################
+occHab <- c()
+
+for(i in 1:length(listSim)){ # for each simulation run
+  load(paste0(pathFiles, "/", listSim[i]))
+  
+  # Which habitat have been selected in the model
+  occHabSim <- lynxIBMrun$occHab
+  occHabSim <- occHabSim[occHabSim$year >= 10, "occHab"] # remove the burn-in
+  occHab <- c(occHab, occHabSim)
+  
+  print(i)
+}
+
+occHab[occHab == 4] <- 3 # consider 4 (breeding habitat) and 3 (dispersal habitat) similar
+table(occHab) / length(occHab)
+
+

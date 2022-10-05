@@ -22,7 +22,7 @@ defineModule(sim, list(
     defineParameter(".plotInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between plot events"),
     defineParameter(".saveInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first save event should occur"),
     defineParameter(".saveInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between save events"),
-    defineParameter("pRepro", "numeric", 0.97, NA, NA, "Probability of reproduction for concerned females - Parameter calibrated with simulations"),
+    defineParameter("pRepro", "numeric", 0.81, NA, NA, "Probability of reproduction for concerned females - Parameter calibrated with simulations"),
     defineParameter("nKittyYoungF", "numeric", c(1, 2), NA, NA, "Number of kittens young females can have if they do reproduce"),
     defineParameter("pKittyYoungF", "numeric", c(0.5, 0.5), NA, NA, "Probabilities for young females to have nKittyYoungF"),
     defineParameter("maxAgeYoungF", "numeric", 11, NA, NA, "Age maximum to be considered 'young female' for reproduction"),
@@ -30,21 +30,21 @@ defineModule(sim, list(
     defineParameter("pKittyOldF", "numeric", c(0.5, 0.5), NA, NA, "Probabilities for old females to have nKittyOldF"),
     defineParameter("minAgeReproF", "numeric", 2, NA, NA, "Age minimum for females to reproduce"),
     defineParameter("minAgeReproM", "numeric", 3, NA, NA, "Age minimum for males to reproduce"),
-    defineParameter("pMortResAlps", "numeric", 0.17, NA, NA, "Fixed annual probability of mortality for residents in the Alps - Parameter calibrated with simulations"),
-    defineParameter("pMortResJura", "numeric", 0.17, NA, NA, "Fixed annual probability of mortality for residents in the Jura - Parameter calibrated with simulations"),
-    defineParameter("pMortResVosgesPalatinate", "numeric", 0.17, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate - Parameter calibrated with simulations"),
-    defineParameter("pMortResBlackForest", "numeric", 0.17, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest - Parameter calibrated with simulations"),
+    defineParameter("pMortResAlps", "numeric", 0.1, NA, NA, "Fixed annual probability of mortality for residents in the Alps - Parameter calibrated with simulations"),
+    defineParameter("pMortResJura", "numeric", 0.1, NA, NA, "Fixed annual probability of mortality for residents in the Jura - Parameter calibrated with simulations"),
+    defineParameter("pMortResVosgesPalatinate", "numeric", 0.1, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate - Parameter calibrated with simulations"),
+    defineParameter("pMortResBlackForest", "numeric", 0.1, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest - Parameter calibrated with simulations"),
     defineParameter("ageMax", "numeric", 20, NA, NA, "Age maximum individuals can be"),
     defineParameter("xPs", "numeric", 11, NA, NA, "Exponent of power function to define the daily step distribution"),
     defineParameter("sMaxPs", "numeric", 45, NA, NA, "Maximum number of intraday movement steps"),
     defineParameter("pMat", "numeric", 0.03, NA, NA, "Probability of stepping into matrix cells"),
     defineParameter("pCorr", "numeric", 0.5, NA, NA, "Movement correlation probability"),
-    defineParameter("pMortDispAlps", "numeric", 0.0011, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps - Parameter calibrated with simulations"),
-    defineParameter("pMortDispJura", "numeric", 0.0011, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura - Parameter calibrated with simulations"),
-    defineParameter("pMortDispVosgesPalatinate", "numeric", 0.0011, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate - Parameter calibrated with simulations"),
-    defineParameter("pMortDispBlackForest", "numeric", 0.0011, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest - Parameter calibrated with simulations"),
-    defineParameter("corrFactorRes", "numeric", 9, NA, NA, "Correction factor for road mortality risk for residents - Parameter calibrated with simulations"),
-    defineParameter("corrFactorDisp", "numeric", 9, NA, NA, "Correction factor for road mortality risk for dispersers - Parameter calibrated with simulations"),
+    defineParameter("pMortDispAlps", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps - Parameter calibrated with simulations"),
+    defineParameter("pMortDispJura", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura - Parameter calibrated with simulations"),
+    defineParameter("pMortDispVosgesPalatinate", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate - Parameter calibrated with simulations"),
+    defineParameter("pMortDispBlackForest", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest - Parameter calibrated with simulations"),
+    defineParameter("corrFactorRes", "numeric", 10, NA, NA, "Correction factor for road mortality risk for residents - Parameter calibrated with simulations"),
+    defineParameter("corrFactorDisp", "numeric", 100, NA, NA, "Correction factor for road mortality risk for dispersers - Parameter calibrated with simulations"),
     defineParameter("nMatMax", "numeric", 10, NA, NA, "Maximum number of consecutive steps within which the individual needs to find dispsersal habitat"),
     defineParameter("coreTerrSizeFAlps", "numeric", 97, NA, NA, "Core size for a female territory (km2) in the Alps"),
     defineParameter("coreTerrSizeFJura", "numeric", 126, NA, NA, "Core size for a female territory (km2) in the Jura"),
@@ -107,7 +107,7 @@ doEvent.lynxIBM = function(sim, eventTime, eventType, debug = FALSE) {
       if(NLcount(sim$lynx) != 0){
         sim <- demography(sim)
       }
-      sim <- saveSim(sim)
+      sim <- saveSimYearly(sim)
       sim <- scheduleEvent(sim, time(sim, "year") + 1, "lynxIBM", "yearEnd")
       sim$day <- 1
     },
@@ -115,7 +115,9 @@ doEvent.lynxIBM = function(sim, eventTime, eventType, debug = FALSE) {
       
       if(NLcount(sim$lynx) != 0){
         if(NLcount(NLwith(agents = sim$lynx, var = "status", val = "disp")) != 0) {
+          sim$tempSaveLynx <- NLwith(agents = sim$lynx, var = "status", val = "disp") # for the daily save
           sim <- dispersal(sim)
+          sim <- saveSimDaily(sim)
         }
       }
       sim <- scheduleEvent(sim, time(sim, "year") + 1/365, "lynxIBM", "daily")
@@ -295,6 +297,8 @@ initSim <- function(sim) {
   sim$resInd <- rep(list(sim$lynx[0, ]), times(sim)$end[1])
   sim$resInd[[1]] <- other(agents = sim$lynx, except = sim$dispOfTheYear)
   sim$nKittyBorn <- list()
+  sim$dailyDist <- data.frame(dailyDist = numeric(), year = numeric())
+  sim$occHab <- data.frame(occHab = numeric(), year = numeric())
   
   
   return(invisible(sim))
@@ -834,8 +838,9 @@ dispersal <- function(sim) {
           deathRoad <- rbinom(n = length(roadMort), size = 1, prob = (roadMort / P(sim)$corrFactorDisp))
           # Do not kill the dispersers the first year of simulation
           # because all individuals from the initial population are dispersers
+          ## INITIAL MORTALITY
           if(floor(time(sim))[1] == start(sim, "year")[1]){
-            deathRoad <- rep(0, length(roadMort))
+              deathRoad <- rep(0, length(roadMort))
           }
 
           sim$nColl <- rbind(sim$nColl, data.frame(ncoll = sum(deathRoad), time = floor(time(sim))[1]))
@@ -900,6 +905,11 @@ dispersal <- function(sim) {
 
       # Do not kill the dispersers the first year of simulation
       # because all individuals from the initial population are dispersers
+      ## INITIAL MORTALITY
+      if(floor(time(sim))[1] == start(sim, "year")[1]){
+        deathRoad <- rep(0, length(roadMort))
+      }
+      
       if(floor(time(sim))[1] == start(sim, "year")[1]){
         deathDaily <- rep(0, length(allDispID))
       }
@@ -1345,10 +1355,29 @@ plotSim <- function(sim) {
 }
 
 ### Save
-saveSim <- function(sim){
+saveSimYearly <- function(sim){
 
   sim$outputLynx[[length(sim$outputLynx) + 1]] <- sim$lynx  
   sim$outputTerrMap[[length(sim$outputTerrMap) + 1]] <- sim$terrMap
   
+  return(invisible(sim))
+}
+
+saveSimDaily <- function(sim){
+
+  # Daily dispersal distance
+  dailyDist <- NLdist(agents = NLwith(agents = sim$tempSaveLynx, var = "who", val = of(agents = sim$lynx, var = "who")), 
+                      agents2 = NLwith(agents = sim$lynx, var = "who", val = of(agents = sim$tempSaveLynx, var = "who")))
+  if(length(dailyDist) != 0){
+    sim$dailyDist <- rbind(sim$dailyDist, data.frame(dailyDist = dailyDist, year =  time(sim, "year")[1]))
+  }
+  
+  # Select dispersal habitat
+  occHab <- of(world = sim$habitatMap, agents = patchHere(world = sim$habitatMap, 
+                                                          turtles = NLwith(agents = sim$lynx, var = "status", val = "disp")))
+  if(length(occHab) != 0){
+    sim$occHab <- rbind(sim$occHab, data.frame(occHab = occHab, year =  time(sim, "year")[1]))
+  }
+
   return(invisible(sim))
 }
