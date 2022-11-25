@@ -29,21 +29,23 @@ gg_color <- function(n) {
 ## Model calibration ##
 #######################
 ### Resulting mortality rates
-rCollDisp <- c()
+rCollAll <- c()
 rCollRes <- c()
-rNoCollDisp <- c()
+rCollDisp <- c()
+rNoCollAll <- c()
 rNoCollRes <- c()
+rNoCollDisp <- c()
 
 for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
   
   # Realized mortality rates for residents and dispersers by collision or otherwise
   # Starts at year 10 (before = burn-in)
   deathLynx <- cbind(repSim = rep(1:nSim, each = lastYear-9), year = rep(10:lastYear, nSim), 
-                     nCollDisp = rep(0, (lastYear-9)*nSim), nCollRes = rep(0, (lastYear-9)*nSim), 
-                     nNoCollDisp = rep(0, (lastYear-9)*nSim), nNoCollRes = rep(0, (lastYear-9)*nSim),
-                     nDisp = rep(0, (lastYear-9)*nSim), nRes = rep(0, (lastYear-9)*nSim),
-                     rCollDisp = rep(0, (lastYear-9)*nSim), rCollRes = rep(0, (lastYear-9)*nSim), 
-                     rNoCollDisp = rep(0, (lastYear-9)*nSim), rNoCollRes = rep(0, (lastYear-9)*nSim))
+                     nCollAll = rep(0, (lastYear-9)*nSim), nCollRes = rep(0, (lastYear-9)*nSim), nCollDisp = rep(0, (lastYear-9)*nSim),
+                     nNoCollAll = rep(0, (lastYear-9)*nSim), nNoCollRes = rep(0, (lastYear-9)*nSim), nNoCollDisp = rep(0, (lastYear-9)*nSim),
+                     nAll = rep(0, (lastYear-9)*nSim), nRes = rep(0, (lastYear-9)*nSim), nDisp = rep(0, (lastYear-9)*nSim), 
+                     rCollAll = rep(0, (lastYear-9)*nSim), rCollRes = rep(0, (lastYear-9)*nSim), rCollDisp = rep(0, (lastYear-9)*nSim), 
+                     rNoCollAll = rep(0, (lastYear-9)*nSim), rNoCollRes = rep(0, (lastYear-9)*nSim), rNoCollDisp = rep(0, (lastYear-9)*nSim))
   
   for(i in 1:length(listSim)){ # for each simulation run
     load(paste0(pathFiles, "/", listSim[i]))
@@ -66,19 +68,13 @@ for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
         outputLynx <- NLwith(agents = lynxIBMrun$outputLynx[[y]], var = "pop", val = popName)
       }
       
-      # Collisions - Dispersers
-      if(NLcount(deadLynxColl) == 0){
-        nCollDisp <- 0
-      } else {
-        nCollDisp <- NLcount(agents = NLwith(agents = deadLynxColl, var = "status", val = "disp"))
-      }
+      # Collisions - All
+      nCollAll <- NLcount(agents = deadLynxColl)
+
       
-      # Deaths other than by collisions - Dispersers
-      if(NLcount(deadLynxNoColl) == 0){
-        nNoCollDisp <- 0
-      } else {
-        nNoCollDisp <- NLcount(agents = NLwith(agents = deadLynxNoColl, var = "status", val = "disp"))
-      }
+      # Deaths other than by collisions - All
+      nNoCollAll <- NLcount(agents = deadLynxNoColl)
+
       
       # Collisions - Residents
       if(NLcount(deadLynxColl) == 0){
@@ -94,26 +90,48 @@ for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
         nNoCollRes <- NLcount(agents = NLwith(agents = deadLynxNoColl, var = "status", val = "res"))
       }
       
+      # Collisions - Dispersers
+      if(NLcount(deadLynxColl) == 0){
+        nCollDisp <- 0
+      } else {
+        nCollDisp <- NLcount(agents = NLwith(agents = deadLynxColl, var = "status", val = "disp"))
+      }
+      
+      # Deaths other than by collisions - Dispersers
+      if(NLcount(deadLynxNoColl) == 0){
+        nNoCollDisp <- 0
+      } else {
+        nNoCollDisp <- NLcount(agents = NLwith(agents = deadLynxNoColl, var = "status", val = "disp"))
+      }
+      
+      
       # Number of individuals at the beginning of the yearly time step
       if(NLcount(outputLynx) != 0){
-        nDisp <- NLcount(agents = NLwith(agents = outputLynx,
-                                         var = "status", val = "disp"))
+        nAll <- NLcount(agents = outputLynx)
         nRes <- NLcount(agents = NLwith(agents = outputLynx,
                                         var = "status", val = "res"))
+        nDisp <- NLcount(agents = NLwith(agents = outputLynx,
+                                         var = "status", val = "disp"))
       } else {
-        nDisp <- 0
+        nAll <- 0
         nRes <- 0
+        nDisp <- 0
       }
       
       # Mortality rates
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nCollDisp"] <- nCollDisp
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nCollAll"] <- nCollAll
       deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nCollRes"] <- nCollRes
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nNoCollDisp"] <- nNoCollDisp
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nCollDisp"] <- nCollDisp
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nNoCollAll"] <- nNoCollAll
       deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nNoCollRes"] <- nNoCollRes
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nDisp"] <- nDisp
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nNoCollDisp"] <- nNoCollDisp
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nAll"] <- nAll
       deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nRes"] <- nRes
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollDisp"] <- nCollDisp / nDisp
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nDisp"] <- nDisp
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollAll"] <- nCollAll / nAll
       deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollRes"] <- nCollRes / nRes
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollDisp"] <- nCollDisp / nDisp
+      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rNoCollAll"] <- nNoCollAll / nAll
       deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rNoCollDisp"] <- nNoCollDisp / nDisp
       deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rNoCollRes"] <- nNoCollRes / nRes
       
@@ -124,19 +142,24 @@ for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
   
   # We need to remove the time when there were no more individuals
   # and remove the first year when we removed the mortality
-  rCollDisp <- c(rCollDisp, mean(deathLynx[deathLynx[, "nDisp"] != 0, "rCollDisp"], na.rm = TRUE))
+  rCollAll <- c(rCollAll, mean(deathLynx[deathLynx[, "nAll"] != 0, "rCollAll"], na.rm = TRUE))
   rCollRes <- c(rCollRes, mean(deathLynx[deathLynx[, "nRes"] != 0, "rCollRes"], na.rm = TRUE))
-  rNoCollDisp <- c(rNoCollDisp, mean(deathLynx[deathLynx[, "nDisp"] != 0, "rNoCollDisp"], na.rm = TRUE))
+  rCollDisp <- c(rCollDisp, mean(deathLynx[deathLynx[, "nDisp"] != 0, "rCollDisp"], na.rm = TRUE))
+  rNoCollAll <- c(rNoCollAll, mean(deathLynx[deathLynx[, "nAll"] != 0, "rNoCollAll"], na.rm = TRUE))
   rNoCollRes <- c(rNoCollRes, mean(deathLynx[deathLynx[, "nRes"] != 0, "rNoCollRes"], na.rm = TRUE))
-
+  rNoCollDisp <- c(rNoCollDisp, mean(deathLynx[deathLynx[, "nDisp"] != 0, "rNoCollDisp"], na.rm = TRUE))
+  
 }
 
 # To calculate the mean over the populations, we remove the BlackForest
 # because there are too few individuals and it bias the mean
-mean(rCollDisp[1:3])
-mean(rCollRes[1:3])
-mean(rNoCollDisp[1:3])
+mean(rNoCollAll[1:3])
 mean(rNoCollRes[1:3])
+mean(rNoCollDisp[1:3])
+mean(rCollAll[1:3])
+mean(rCollRes[1:3])
+mean(rCollDisp[1:3])
+
 
 ### Reproduction rate
 pRepro <- numeric()
@@ -319,9 +342,9 @@ for(i in 1:length(listSim)){ # for each simulation run
 
 # Summarize the data
 movePopLongDT <- melt(setDT(as.data.frame(movePop)), id = c("repSim", "year"))
-# Calculate the cumulative sum of the movement over the years per simulation and per variable (=pair of populations with a direction)
+# Compute the cumulative sum of the movement over the years per simulation and per variable (=pair of populations with a direction)
 movePopLongDT[, Cum.Sum := cumsum(value), by=list(repSim, variable)] 
-# Calculte the mean and 95% confidence intervals per year and per variable
+# Compute the mean and 95% confidence intervals per year and per variable
 movePopLongDTSum <- summarySE(as.data.frame(movePopLongDT), measurevar = "Cum.Sum", groupvars = c("year","variable"))
 # Remove the variable where there was no movement simulated between the two population
 movePopLongDTSum2 <- movePopLongDTSum[movePopLongDTSum$variable %in% movePopLongDTSum[movePopLongDTSum$year == lastYear
