@@ -9,7 +9,7 @@ library(SpaDES.core)
 library(raster)
 
 # Where is located your appendix_lynxIBM repo
-pathRepo <- "C:/Users/Bauduin/Documents/GitHub/" # change to your path
+pathRepo <- "C:/Users/sarah.bauduin/Documents/GitHub/" # change to your path
 
 # Define the paths
 moduleDir <- file.path(paste0(pathRepo, "appendix_lynxIBM/module"))
