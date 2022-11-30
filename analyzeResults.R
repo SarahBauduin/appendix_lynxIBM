@@ -25,10 +25,15 @@ gg_color <- function(n) {
 }
 
 
+################################################################
 #######################
-## Model calibration ##
+## MODEL CALIBRATION ##
 #######################
-### Resulting mortality rates
+
+###############################
+## Resulting mortality rates ##
+###############################
+
 rCollAll <- c()
 rCollRes <- c()
 rCollDisp <- c()
@@ -141,7 +146,6 @@ for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
   
   
   # We need to remove the time when there were no more individuals
-  # and remove the first year when we removed the mortality
   rCollAll <- c(rCollAll, mean(deathLynx[deathLynx[, "nAll"] != 0, "rCollAll"], na.rm = TRUE))
   rCollRes <- c(rCollRes, mean(deathLynx[deathLynx[, "nRes"] != 0, "rCollRes"], na.rm = TRUE))
   rCollDisp <- c(rCollDisp, mean(deathLynx[deathLynx[, "nDisp"] != 0, "rCollDisp"], na.rm = TRUE))
@@ -151,8 +155,7 @@ for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
   
 }
 
-# To calculate the mean over the populations, we remove the BlackForest
-# because there are too few individuals and it bias the mean
+# Mean over the Alps, Jura and Vosges-Palatinate populations
 mean(rNoCollAll[1:3])
 mean(rNoCollRes[1:3])
 mean(rNoCollDisp[1:3])
@@ -161,7 +164,9 @@ mean(rCollRes[1:3])
 mean(rCollDisp[1:3])
 
 
-### Reproduction rate
+#######################
+## Reproduction rate ##
+#######################
 pRepro <- numeric()
 
 for(i in 1:length(listSim)){ # for each simulation run
@@ -189,6 +194,134 @@ for(i in 1:length(listSim)){ # for each simulation run
 }
 
 summary(pRepro)
+
+
+########################
+## Dispersal distance ##
+########################
+dispDistList <- list()
+popList <- 1
+# Use a raster to transfer the territories on it to extract the centroid
+habMapSpaDES <- raster("appendix_lynxIBM/module/inputs/habMap.tif")
+
+for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
+  dispDist <- c()
+  
+  for(i in 1:length(listSim)){ # for each simulation run
+    load(paste0(pathFiles, "/", listSim[i]))
+    
+    bornInd <- cbind.data.frame(xcor = c(), ycor = c(), who = c())
+    resInd <- cbind.data.frame(xcor2 = c(), ycor2 = c(), who = c())
+    
+    for(y in 10:(lastYear - 1)){ 
+      
+      # Territories where lynx were born
+      if(NLcount(agents = NLwith(agents = lynxIBMrun$bornLynx[[y]],var = "pop", val = popName)) > 0){
+        # Territory centroids
+        habMapSpaDES[] <- lynxIBMrun$outputTerrMap[[y]] # transfer the territory number from the worldMatrix to a raster
+        terrPol <- rasterToPolygons(habMapSpaDES, dissolve = TRUE)
+        spPoints <- gCentroid(terrPol, byid = TRUE)
+        centroidTerr <- cbind.data.frame(xcor = spPoints@coords[,1], ycor = spPoints@coords[,2], 
+                                         terrNum = terrPol@data)
+        # Born individuals
+        terrBornInd <- of(world = lynxIBMrun$outputTerrMap[[y]],
+                          agents = patchHere(world = lynxIBMrun$outputTerrMap[[y]], 
+                                             turtles = NLwith(agents=lynxIBMrun$bornLynx[[y]],var = "pop",val = popName)))
+        terrBornInd2 <- merge(as.data.frame(terrBornInd), centroidTerr, by.x = "terrBornInd", by.y = "habMap")
+        terrBornInd2 <- terrBornInd2[match(terrBornInd, terrBornInd2[,"terrBornInd"]),]
+        bornInd <- rbind(bornInd, 
+                         cbind.data.frame(xcor = terrBornInd2[,"xcor"], ycor = terrBornInd2[,"ycor"],
+                                          who = of(agents = NLwith(agents=lynxIBMrun$bornLynx[[y]],var = "pop",val = popName), var = "who")))
+        
+      }
+      # Territories of resident lynx
+      if(NLcount(agents = lynxIBMrun$resLynx[[y]]) > 0 & NLcount(agents = lynxIBMrun$outputLynx[[y + 1]]) > 0){
+        
+        # Separate male and female territories
+        # Females
+        resFem <- NLwith(agents = lynxIBMrun$resLynx[[y]], var = "sex", val = "F")
+        # Residents that survived the year when they became resident
+        resFem <- NLwith(agents = resFem, var = "who", 
+                         val = of(agents = lynxIBMrun$outputLynx[[y + 1]], var = "who"))
+        if(NLcount(resFem) > 0){
+          # Territory centroids
+          habMapSpaDES[] <- lynxIBMrun$outputTerrMap[[y + 1]] # transfer the territory number from the worldMatrix to a raster
+          terrPol <- rasterToPolygons(habMapSpaDES, dissolve = TRUE)
+          spPoints <- gCentroid(terrPol, byid = TRUE)
+          centroidTerr <- cbind.data.frame(xcor = spPoints@coords[,1], ycor = spPoints@coords[,2], 
+                                           terrNum = terrPol@data)
+          # Resident females
+          terrResFem <- of(world = lynxIBMrun$outputTerrMap[[y + 1]],
+                           agents = patchHere(world = lynxIBMrun$outputTerrMap[[y + 1]], turtles = resFem))
+          terrResFem2 <- merge(as.data.frame(terrResFem), centroidTerr, by.x = "terrResFem", by.y = "habMap")
+          terrResFem2 <- terrResFem2[match(terrResFem, terrResFem2[,"terrResFem"]),]
+          resInd <- rbind(resInd, 
+                          cbind.data.frame(xcor2 = terrResFem2[,"xcor"], ycor2 = terrResFem2[,"ycor"],
+                                           who = of(agents = resFem, var = "who")))
+          
+        }
+        # Males
+        resMal <- NLwith(agents = lynxIBMrun$resLynx[[y]], var = "sex", val = "M")
+        # Residents that survived the year when they became resident
+        # and who are still resident (their female(s) did not all die)
+        resMal <- NLwith(agents = resMal, var = "who", 
+                         val = of(agents = NLwith(agents = lynxIBMrun$outputLynx[[y + 1]],
+                                                  var = "status", val = "res"),
+                                  var = "who"))
+        if(NLcount(resMal) > 0){
+          # Male territories are a combination of several female territories
+          for(eachMale in of(agents = resMal, var = "who")){
+            allFem <- NLwith(agents = lynxIBMrun$outputLynx[[y + 1]], var = "maleID", val = eachMale)
+            # Retrieve the territories of these females (their who numbers)
+            # Territory centroids
+            habMapSpaDES[] <- lynxIBMrun$outputTerrMap[[y + 1]] # transfer the territory number from the worldMatrix to a raster
+            habMapSpaDES[!habMapSpaDES %in% of(agents = allFem, var = "who")] <- NA
+            terrPol <- rasterToPolygons(habMapSpaDES, dissolve = TRUE)
+            spPoints <- gCentroid(terrPol)
+            centroidTerr <- cbind.data.frame(xcor = spPoints@coords[,1], ycor = spPoints@coords[,2], 
+                                             terrNum = eachMale)
+            resInd <- rbind(resInd, 
+                            cbind.data.frame(xcor2 = centroidTerr[,"xcor"], ycor2 = centroidTerr[,"ycor"],
+                                             who = eachMale))
+          }
+        }
+      }
+    }
+    
+    # At the end of the simulation run, merge the lynx born territory centroid 
+    # with the centroid of the place where they became residents based on their ID
+    # and calculate the distance
+    if(nrow(bornInd) != 0){
+      
+      bornResInd <- merge(bornInd, resInd, by = "who", all = TRUE)
+      bornResInd <- na.omit(bornResInd)
+      if(nrow(bornResInd) != 0){
+        bornResInd$dist <- spDists(x = spTransform(SpatialPoints(coords = cbind(pxcor = bornResInd$xcor, pycor = bornResInd$ycor),
+                                                                 proj4string = habMapSpaDES@crs),
+                                                   "+proj=longlat +ellps=WGS84"),
+                                   y = spTransform(SpatialPoints(coords = cbind(pxcor = bornResInd$xcor2, pycor = bornResInd$ycor2),
+                                                                 proj4string = habMapSpaDES@crs),
+                                                   "+proj=longlat +ellps=WGS84"),
+                                   diagonal = TRUE)
+        dispDist <- c(dispDist, bornResInd$dist[!is.na(bornResInd$dist)])
+      }
+    }
+    
+    print(i)
+  }
+  
+  
+  dispDistList[[popList]] <- dispDist
+  popList <- popList + 1
+}  
+
+summary(dispDistList[[1]]) # Alps
+summary(dispDistList[[2]]) # Jura
+summary(dispDistList[[3]]) # Vosges-Palatinate
+summary(dispDistList[[4]]) # BlackForest
+
+
+################################################################
 
 
 #############################
@@ -426,131 +559,6 @@ habPol <- rasterToPolygons(habMapSpaDES)
 plot(terrOccMapRas, col=wes_palette("Zissou1", 100, type = "continuous"))
 plot(habPol, col = "gray80", border = NA, add = TRUE)
 plot(pays, add = TRUE)
-
-
-########################
-## Dispersal distance ##
-########################
-dispDistList <- list()
-popList <- 1
-# Use a raster to transfer the territories on it to extract the centroid
-habMapSpaDES <- raster("appendix_lynxIBM/module/inputs/habMap.tif")
-
-for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
-  dispDist <- c()
-  
-for(i in 1:length(listSim)){ # for each simulation run
-  load(paste0(pathFiles, "/", listSim[i]))
-  
-  bornInd <- cbind.data.frame(xcor = c(), ycor = c(), who = c())
-  resInd <- cbind.data.frame(xcor2 = c(), ycor2 = c(), who = c())
-  
-  for(y in 10:(lastYear - 1)){ 
-    
-    # Territories where lynx were born
-    if(NLcount(agents = NLwith(agents = lynxIBMrun$bornLynx[[y]],var = "pop", val = popName)) > 0){
-      # Territory centroids
-      habMapSpaDES[] <- lynxIBMrun$outputTerrMap[[y]] # transfer the territory number from the worldMatrix to a raster
-      terrPol <- rasterToPolygons(habMapSpaDES, dissolve = TRUE)
-      spPoints <- gCentroid(terrPol, byid = TRUE)
-      centroidTerr <- cbind.data.frame(xcor = spPoints@coords[,1], ycor = spPoints@coords[,2], 
-                                       terrNum = terrPol@data)
-      # Born individuals
-      terrBornInd <- of(world = lynxIBMrun$outputTerrMap[[y]],
-                        agents = patchHere(world = lynxIBMrun$outputTerrMap[[y]], 
-                                           turtles = NLwith(agents=lynxIBMrun$bornLynx[[y]],var = "pop",val = popName)))
-      terrBornInd2 <- merge(as.data.frame(terrBornInd), centroidTerr, by.x = "terrBornInd", by.y = "habMap")
-      terrBornInd2 <- terrBornInd2[match(terrBornInd, terrBornInd2[,"terrBornInd"]),]
-      bornInd <- rbind(bornInd, 
-                       cbind.data.frame(xcor = terrBornInd2[,"xcor"], ycor = terrBornInd2[,"ycor"],
-                                        who = of(agents = NLwith(agents=lynxIBMrun$bornLynx[[y]],var = "pop",val = popName), var = "who")))
-      
-    }
-    # Territories of resident lynx
-    if(NLcount(agents = lynxIBMrun$resLynx[[y]]) > 0 & NLcount(agents = lynxIBMrun$outputLynx[[y + 1]]) > 0){
-      
-      # Separate male and female territories
-      # Females
-      resFem <- NLwith(agents = lynxIBMrun$resLynx[[y]], var = "sex", val = "F")
-      # Residents that survived the year when they became resident
-      resFem <- NLwith(agents = resFem, var = "who", 
-                       val = of(agents = lynxIBMrun$outputLynx[[y + 1]], var = "who"))
-      if(NLcount(resFem) > 0){
-        # Territory centroids
-        habMapSpaDES[] <- lynxIBMrun$outputTerrMap[[y + 1]] # transfer the territory number from the worldMatrix to a raster
-        terrPol <- rasterToPolygons(habMapSpaDES, dissolve = TRUE)
-        spPoints <- gCentroid(terrPol, byid = TRUE)
-        centroidTerr <- cbind.data.frame(xcor = spPoints@coords[,1], ycor = spPoints@coords[,2], 
-                                         terrNum = terrPol@data)
-        # Resident females
-        terrResFem <- of(world = lynxIBMrun$outputTerrMap[[y + 1]],
-                         agents = patchHere(world = lynxIBMrun$outputTerrMap[[y + 1]], turtles = resFem))
-        terrResFem2 <- merge(as.data.frame(terrResFem), centroidTerr, by.x = "terrResFem", by.y = "habMap")
-        terrResFem2 <- terrResFem2[match(terrResFem, terrResFem2[,"terrResFem"]),]
-        resInd <- rbind(resInd, 
-                        cbind.data.frame(xcor2 = terrResFem2[,"xcor"], ycor2 = terrResFem2[,"ycor"],
-                                         who = of(agents = resFem, var = "who")))
-        
-      }
-      # Males
-      resMal <- NLwith(agents = lynxIBMrun$resLynx[[y]], var = "sex", val = "M")
-      # Residents that survived the year when they became resident
-      # and who are still resident (their female(s) did not all die)
-      resMal <- NLwith(agents = resMal, var = "who", 
-                       val = of(agents = NLwith(agents = lynxIBMrun$outputLynx[[y + 1]],
-                                                var = "status", val = "res"),
-                                var = "who"))
-      if(NLcount(resMal) > 0){
-        # Male territories are a combination of several female territories
-        for(eachMale in of(agents = resMal, var = "who")){
-          allFem <- NLwith(agents = lynxIBMrun$outputLynx[[y + 1]], var = "maleID", val = eachMale)
-          # Retrieve the territories of these females (their who numbers)
-          # Territory centroids
-          habMapSpaDES[] <- lynxIBMrun$outputTerrMap[[y + 1]] # transfer the territory number from the worldMatrix to a raster
-          habMapSpaDES[!habMapSpaDES %in% of(agents = allFem, var = "who")] <- NA
-          terrPol <- rasterToPolygons(habMapSpaDES, dissolve = TRUE)
-          spPoints <- gCentroid(terrPol)
-          centroidTerr <- cbind.data.frame(xcor = spPoints@coords[,1], ycor = spPoints@coords[,2], 
-                                           terrNum = eachMale)
-          resInd <- rbind(resInd, 
-                          cbind.data.frame(xcor2 = centroidTerr[,"xcor"], ycor2 = centroidTerr[,"ycor"],
-                                           who = eachMale))
-        }
-      }
-    }
-  }
-  
-  # At the end of the simulation run, merge the lynx born territory centroid 
-  # with the centroid of the place where they became residents based on their ID
-  # and calculate the distance
-  if(nrow(bornInd) != 0){
-    
-    bornResInd <- merge(bornInd, resInd, by = "who", all = TRUE)
-    bornResInd <- na.omit(bornResInd)
-    if(nrow(bornResInd) != 0){
-      bornResInd$dist <- spDists(x = spTransform(SpatialPoints(coords = cbind(pxcor = bornResInd$xcor, pycor = bornResInd$ycor),
-                                                               proj4string = habMapSpaDES@crs),
-                                                 "+proj=longlat +ellps=WGS84"),
-                                 y = spTransform(SpatialPoints(coords = cbind(pxcor = bornResInd$xcor2, pycor = bornResInd$ycor2),
-                                                               proj4string = habMapSpaDES@crs),
-                                                 "+proj=longlat +ellps=WGS84"),
-                                 diagonal = TRUE)
-      dispDist <- c(dispDist, bornResInd$dist[!is.na(bornResInd$dist)])
-    }
-  }
-
-  print(i)
-}
-  
-  
-  dispDistList[[popList]] <- dispDist
-  popList <- popList + 1
-}  
-
-summary(dispDistList[[1]]) # Alps
-summary(dispDistList[[2]]) # Jura
-summary(dispDistList[[3]]) # Vosges-Palatinate
-summary(dispDistList[[4]]) # BlackForest
 
 
 ########################
