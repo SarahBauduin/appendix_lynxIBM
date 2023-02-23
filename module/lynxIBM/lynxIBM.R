@@ -44,7 +44,7 @@ defineModule(sim, list(
     defineParameter("pMortDispVosgesPalatinate", "numeric", 0.0008, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate - Parameter calibrated with simulations"),
     defineParameter("pMortDispBlackForest", "numeric", 0.0008, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest - Parameter calibrated with simulations"),
     defineParameter("corrFactorRes", "numeric", 3, NA, NA, "Correction factor for road mortality risk for residents - Parameter calibrated with simulations"),
-    defineParameter("corrFactorDisp", "numeric", 250, NA, NA, "Correction factor for road mortality risk for dispersers - Parameter calibrated with simulations"),
+    defineParameter("corrFactorDisp", "numeric", 300, NA, NA, "Correction factor for road mortality risk for dispersers - Parameter calibrated with simulations"),
     defineParameter("nMatMax", "numeric", 10, NA, NA, "Maximum number of consecutive steps within which the individual needs to find dispsersal habitat"),
     defineParameter("coreTerrSizeFAlps", "numeric", 97, NA, NA, "Core size for a female territory (km2) in the Alps"),
     defineParameter("coreTerrSizeFJura", "numeric", 126, NA, NA, "Core size for a female territory (km2) in the Jura"),
@@ -94,7 +94,9 @@ doEvent.lynxIBM = function(sim, eventTime, eventType, debug = FALSE) {
     yearEnd = {
       
       #####
-      
+      if(NLcount(sim$lynx) != 0){
+        sim <- demography(sim)
+      }
       if(NLcount(sim$lynx) != 0){
         sim <- reproduction(sim)
       }
@@ -104,9 +106,6 @@ doEvent.lynxIBM = function(sim, eventTime, eventType, debug = FALSE) {
 
       #####
       
-      if(NLcount(sim$lynx) != 0){
-        sim <- demography(sim)
-      }
       sim <- saveSimYearly(sim)
       sim <- scheduleEvent(sim, time(sim, "year") + 1, "lynxIBM", "yearEnd")
       sim$day <- 1
@@ -293,9 +292,8 @@ initSim <- function(sim) {
   sim$deadDisp <- data.frame(nDisp = numeric(), nDispDeadColl = numeric(), nDispDeadDaily = numeric(), time = numeric()) # how many lynx died during dispersal
   # Individuals that will disperse the following year
   sim$dispOfTheYear <- NLwith(agents = sim$lynx, var = "status", val = "disp")
-  # Individuals that can reproduce (i.e., already resident at the beginning of the year)
-  sim$resInd <- rep(list(sim$lynx[0, ]), times(sim)$end[1])
-  sim$resInd[[1]] <- other(agents = sim$lynx, except = sim$dispOfTheYear)
+  # Females that can reproduce 
+  sim$FemRes <- rep(list(sim$lynx[0, ]), times(sim)$end[1])
   sim$nKittyBorn <- list()
   sim$dailyDist <- data.frame(dailyDist = numeric(), year = numeric())
   sim$occHab <- data.frame(occHab = numeric(), year = numeric())
@@ -308,7 +306,10 @@ initSim <- function(sim) {
 reproduction <- function(sim) {
 
   # Resident females with associated resident males can reproduce
-  infoLynx <- sim$resInd[[time(sim, "year")[1]]]@.Data[, c("who", "age", "maleID"), drop = FALSE]
+  resInd <- NLwith(agents = sim$lynx, var = "status", val = "res")
+  sim$FemRes[[time(sim, "year")[1]]] <- NLwith(agents = resInd, var = "sex", val = "F")
+  infoLynx <- of(agents = resInd, var =  c("who", "age", "maleID"))
+  # infoLynx <- sim$resInd[[time(sim, "year")[1]]]@.Data[, c("who", "age", "maleID"), drop = FALSE]
   # Adding regarding S?ugetierkunde 1991 publication on sexual maturation in boreal lynx
   # Males of 1 3/4 (i.e., 2 years old) are 50% fertile, they are all fertile at 2 3/4 (i.e., 3 years old)
   # Females of 3/4 are 50% fertile (i.e., 1 year old), they are all fertile at 1 3/4 (i.e., 2 years old)
@@ -1335,8 +1336,8 @@ demography <- function(sim) {
   # Individuals that will disperse the next year
   sim$dispOfTheYear <- NLwith(agents = sim$lynx, var = "status", val = "disp")
   
-  # Individuals that can reproduce (i.e., already resident at the beginning of the year)
-  sim$resInd[[time(sim, "year")[1] + 1]] <- other(agents = sim$lynx, except = sim$dispOfTheYear)
+  # # Individuals that can reproduce (i.e., already resident at the beginning of the year)
+  # sim$resInd[[time(sim, "year")[1] + 1]] <- other(agents = sim$lynx, except = sim$dispOfTheYear)
   
   return(invisible(sim))
 }

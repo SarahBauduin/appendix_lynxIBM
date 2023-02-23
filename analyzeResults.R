@@ -45,7 +45,7 @@ for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
   
   # Realized mortality rates for residents and dispersers by collision or otherwise
   # Starts at year 10 (before = burn-in)
-  deathLynx <- cbind(repSim = rep(1:nSim, each = lastYear-9), year = rep(10:lastYear, nSim), 
+  deathLynx <- cbind(repSim = rep(1:nSim, each = lastYear-9), year = rep(10:lastYear, nSim),
                      nCollAll = rep(0, (lastYear-9)*nSim), nCollRes = rep(0, (lastYear-9)*nSim), nCollDisp = rep(0, (lastYear-9)*nSim),
                      nNoCollAll = rep(0, (lastYear-9)*nSim), nNoCollRes = rep(0, (lastYear-9)*nSim), nNoCollDisp = rep(0, (lastYear-9)*nSim),
                      nAll = rep(0, (lastYear-9)*nSim), nRes = rep(0, (lastYear-9)*nSim), nDisp = rep(0, (lastYear-9)*nSim), 
@@ -155,14 +155,16 @@ for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
   
 }
 
-# Mean over the Alps, Jura and Vosges-Palatinate populations
-mean(rNoCollAll[1:3])
-mean(rNoCollRes[1:3])
-mean(rNoCollDisp[1:3])
-mean(rCollAll[1:3])
-mean(rCollRes[1:3])
-mean(rCollDisp[1:3])
-
+# Mean for the Alps
+rNoCollRes[1]
+rNoCollDisp[1]
+rCollRes[1]
+rCollDisp[1]
+# Mean for the Jura
+rNoCollRes[2]
+rNoCollDisp[2]
+rCollRes[2]
+rCollDisp[2]
 
 #######################
 ## Reproduction rate ##
@@ -172,15 +174,15 @@ pRepro <- numeric()
 for(i in 1:length(listSim)){ # for each simulation run
   load(paste0(pathFiles, "/", listSim[i]))
   
-  resInd <- lynxIBMrun$resInd # resident individuals
+  FemRes <- lynxIBMrun$FemRes # resident individuals
   nKittyBorn <- lynxIBMrun$nKittyBorn # number of kittens produced per reproducing female
   
-  nFemRes <- rep(0, length(resInd) - 10) # resInd = 51 elements
-  nKitty <- rep(0, length(resInd) - 10)
+  nFemRes <- rep(0, length(FemRes) - 10) # FemRes = 51 elements
+  nKitty <- rep(0, length(FemRes) - 10)
   
-  for(j in 10:(length(resInd) - 1)){ # remove burn-in
+  for(j in 10:(length(FemRes) - 1)){ # remove burn-in
     # Number of resident females
-    nFemRes[j-9] <- NLcount(agents = NLwith(agents = resInd[[j]], var = "sex", val = "F"))
+    nFemRes[j-9] <- NLcount(FemRes[[j]])
   }
   
   for(j in 10:length(nKittyBorn)){ # remove burn-in
@@ -556,7 +558,7 @@ habMapSpaDES[!is.na(terrOccMapRas)] <- NA
 plot(habMapSpaDES)
 habPol <- rasterToPolygons(habMapSpaDES)
 # Adapt the colorscale
-plot(terrOccMapRas, col=wes_palette("Zissou1", 100, type = "continuous"))
+plot(terrOccMapRas, col = wes_palette("Zissou1", 100, type = "continuous"))
 plot(habPol, col = "gray80", border = NA, add = TRUE)
 plot(pays, add = TRUE)
 
@@ -576,7 +578,7 @@ for(i in 1:length(listSim)){ # for each simulation run
   # Add 365 for the individuals still dispersers at the end of the year
   for(y in 10:(lastYear - 1)){ 
     disp <- NLwith(agents = lynxIBMrun$outputLynx[[y]], var = "status", val = "disp")
-    notDispOfTheYear <- other(agents = disp, except = NLwith(agents = disp, var = "age", val = 2))
+    notDispOfTheYear <- other(agents = disp, except = NLwith(agents = disp, var = "age", val = c(1, 2)))
     nDisp <- NLcount(notDispOfTheYear)
     dispTime <- c(dispTime, rep(365, nDisp))
   }
@@ -584,7 +586,7 @@ for(i in 1:length(listSim)){ # for each simulation run
   print(i)
 }
 
-summary(dispTime)
+mean(dispTime)
 
 
 ##############################
