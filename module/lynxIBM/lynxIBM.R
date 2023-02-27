@@ -22,7 +22,7 @@ defineModule(sim, list(
     defineParameter(".plotInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between plot events"),
     defineParameter(".saveInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first save event should occur"),
     defineParameter(".saveInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between save events"),
-    defineParameter("pRepro", "numeric", 1, NA, NA, "Probability of reproduction for concerned females - Parameter calibrated with simulations"),
+    defineParameter("pRepro", "numeric", 0.95, NA, NA, "Probability of reproduction for concerned females - Parameter calibrated with simulations"),
     defineParameter("nKittyYoungF", "numeric", c(1, 2), NA, NA, "Number of kittens young females can have if they do reproduce"),
     defineParameter("pKittyYoungF", "numeric", c(0.5, 0.5), NA, NA, "Probabilities for young females to have nKittyYoungF"),
     defineParameter("maxAgeYoungF", "numeric", 11, NA, NA, "Age maximum to be considered 'young female' for reproduction"),
@@ -30,21 +30,21 @@ defineModule(sim, list(
     defineParameter("pKittyOldF", "numeric", c(0.5, 0.5), NA, NA, "Probabilities for old females to have nKittyOldF"),
     defineParameter("minAgeReproF", "numeric", 2, NA, NA, "Age minimum for females to reproduce"),
     defineParameter("minAgeReproM", "numeric", 3, NA, NA, "Age minimum for males to reproduce"),
-    defineParameter("pMortResAlps", "numeric", 0.16, NA, NA, "Fixed annual probability of mortality for residents in the Alps - Parameter calibrated with simulations"),
-    defineParameter("pMortResJura", "numeric", 0.16, NA, NA, "Fixed annual probability of mortality for residents in the Jura - Parameter calibrated with simulations"),
-    defineParameter("pMortResVosgesPalatinate", "numeric", 0.16, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate - Parameter calibrated with simulations"),
-    defineParameter("pMortResBlackForest", "numeric", 0.16, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest - Parameter calibrated with simulations"),
+    defineParameter("pMortResAlps", "numeric", 0.17, NA, NA, "Fixed annual probability of mortality for residents in the Alps - Parameter calibrated with simulations"),
+    defineParameter("pMortResJura", "numeric", 0.1, NA, NA, "Fixed annual probability of mortality for residents in the Jura - Parameter calibrated with simulations"),
+    defineParameter("pMortResVosgesPalatinate", "numeric", 0.1, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate - Parameter calibrated with simulations"),
+    defineParameter("pMortResBlackForest", "numeric", 0.1, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest - Parameter calibrated with simulations"),
     defineParameter("ageMax", "numeric", 20, NA, NA, "Age maximum individuals can be"),
     defineParameter("xPs", "numeric", 11, NA, NA, "Exponent of power function to define the daily step distribution"),
     defineParameter("sMaxPs", "numeric", 45, NA, NA, "Maximum number of intraday movement steps"),
     defineParameter("pMat", "numeric", 0.03, NA, NA, "Probability of stepping into matrix cells"),
     defineParameter("pCorr", "numeric", 0.5, NA, NA, "Movement correlation probability"),
-    defineParameter("pMortDispAlps", "numeric", 0.0008, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps - Parameter calibrated with simulations"),
-    defineParameter("pMortDispJura", "numeric", 0.0008, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura - Parameter calibrated with simulations"),
-    defineParameter("pMortDispVosgesPalatinate", "numeric", 0.0008, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate - Parameter calibrated with simulations"),
-    defineParameter("pMortDispBlackForest", "numeric", 0.0008, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest - Parameter calibrated with simulations"),
-    defineParameter("corrFactorRes", "numeric", 3, NA, NA, "Correction factor for road mortality risk for residents - Parameter calibrated with simulations"),
-    defineParameter("corrFactorDisp", "numeric", 300, NA, NA, "Correction factor for road mortality risk for dispersers - Parameter calibrated with simulations"),
+    defineParameter("pMortDispAlps", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps - Parameter calibrated with simulations"),
+    defineParameter("pMortDispJura", "numeric", 0.0012, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura - Parameter calibrated with simulations"),
+    defineParameter("pMortDispVosgesPalatinate", "numeric", 0.0012, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate - Parameter calibrated with simulations"),
+    defineParameter("pMortDispBlackForest", "numeric", 0.0012, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest - Parameter calibrated with simulations"),
+    defineParameter("corrFactorRes", "numeric", 2.5, NA, NA, "Correction factor for road mortality risk for residents - Parameter calibrated with simulations"),
+    defineParameter("corrFactorDisp", "numeric", 125, NA, NA, "Correction factor for road mortality risk for dispersers - Parameter calibrated with simulations"),
     defineParameter("nMatMax", "numeric", 10, NA, NA, "Maximum number of consecutive steps within which the individual needs to find dispsersal habitat"),
     defineParameter("coreTerrSizeFAlps", "numeric", 97, NA, NA, "Core size for a female territory (km2) in the Alps"),
     defineParameter("coreTerrSizeFJura", "numeric", 126, NA, NA, "Core size for a female territory (km2) in the Jura"),
@@ -1092,126 +1092,254 @@ dispersal <- function(sim) {
 searchTerritory <- function(sim) {
 
   disp <- turtle(turtles = sim$lynx, who = sim$aliveDispersingIndID)
-  
   if(NLcount(disp) != 0) {
-    
+
     # Female dispersers
     dispFem <- NLwith(agents = disp, var = "sex", val = "F")
     if(NLcount(dispFem) != 0) {
       dispFemID <- dispFem@.Data[, "who"]
       # Shuffle dispFemID so that it's not always the smallest IDs (i.e., the oldest individuals) that go first
       dispFemID <- dispFemID[sample(length(dispFemID))]
-      
-      for(searchingFemID in dispFemID) {
-        # To build territory = empty cells of breeding type (= 4)
-        searchingFemCell <- patchHere(world = sim$habitatMap, turtles = turtle(turtles = sim$lynx, who = searchingFemID))
-        #searchingFemCellType <- of(world = sim$habitatMap, agents = searchingFemCell)
-        searchingFemCellType <- sim$habitatMap[searchingFemCell[, 1], searchingFemCell[, 2]] # faster
-        #searchingFemCellAvail <- of(world = sim$terrMap, agents = searchingFemCell)
-        searchingFemCellAvail <- sim$terrMap[searchingFemCell[, 1], searchingFemCell[, 2]] # faster
 
-        if(searchingFemCellType == 4 & is.na(searchingFemCellAvail)){ # current position
-          #terrValues <- of(world = sim$terrMap, agents = patches(sim$terrMap))
-          terrValues <- as.numeric(t(sim$terrMap@.Data)) # faster
-          availCellsUpdatedRas <- sim$availCellsRas
-          occupiedCells <- which(!is.na(terrValues))
-          availCellsUpdatedRas[occupiedCells] <- 0
-          
-          # Spread from the female position (loci) to available contiguous cells
-          # Find on which territory the female is
+      # # TRY SOMETHING FASTER
+      # for(searchingFemID in dispFemID) {
+      #   # To build territory = empty cells of breeding type (= 4)
+      #   searchingFemCell <- patchHere(world = sim$habitatMap, turtles = turtle(turtles = sim$lynx, who = searchingFemID))
+      #   #searchingFemCellType <- of(world = sim$habitatMap, agents = searchingFemCell)
+      #   searchingFemCellType <- sim$habitatMap[searchingFemCell[, 1], searchingFemCell[, 2]] # faster
+      #   #searchingFemCellAvail <- of(world = sim$terrMap, agents = searchingFemCell)
+      #   searchingFemCellAvail <- sim$terrMap[searchingFemCell[, 1], searchingFemCell[, 2]] # faster
+      # 
+      #   if(searchingFemCellType == 4 & is.na(searchingFemCellAvail)){ # current position
+      #     #terrValues <- of(world = sim$terrMap, agents = patches(sim$terrMap))
+      #     terrValues <- as.numeric(t(sim$terrMap@.Data)) # faster
+      #     availCellsUpdatedRas <- sim$availCellsRas
+      #     occupiedCells <- which(!is.na(terrValues))
+      #     availCellsUpdatedRas[occupiedCells] <- 0
+      # 
+      #     # Spread from the female position (loci) to available contiguous cells
+      #     # Find on which territory the female is
+      #     terrSizeName <- of(world = sim$popDist, agents = patchHere(world = sim$popDist, turtles = turtle(turtles = sim$lynx, who = searchingFemID)))
+      #     # And assign the territory size according to her position
+      #     if(terrSizeName == 1){
+      #       terrSize <- round(P(sim)$coreTerrSizeFAlps)
+      #     }
+      #     if(terrSizeName == 2){
+      #       terrSize <- round(P(sim)$coreTerrSizeFJura)
+      #     }
+      #     if(terrSizeName == 3){
+      #       terrSize <- round(P(sim)$coreTerrSizeFVosgesPalatinate)
+      #     }
+      #     if(terrSizeName == 4){
+      #       terrSize <- round(P(sim)$coreTerrSizeFBlackForest)
+      #     }
+      #     terrDT <- spread(landscape = availCellsUpdatedRas, directions = 4,
+      #                      loci = cellFromPxcorPycor(world = sim$habitatMap,
+      #                                                pxcor = searchingFemCell[, 1],
+      #                                                pycor = searchingFemCell[, 2]),
+      #                      spreadProb = availCellsUpdatedRas, maxSize = terrSize, returnIndices = TRUE,
+      #                      quick = TRUE)
+      #     terrCells <- unique(terrDT$indices) # cells of the built territory
+      #     if(length(terrCells) == terrSize) {
+      #       newTerrCells <- PxcorPycorFromCell(world = sim$habitatMap, cellNum = terrCells)
+      # 
+      #       # Test
+      #       if(P(sim)$testON == TRUE) {
+      #         expect_true(all(is.na(of(world = sim$terrMap, agents = newTerrCells))))
+      #       }
+      # 
+      #       # Claim the territory
+      #       sim$terrMap <- NLset(world = sim$terrMap, agents = newTerrCells, val = searchingFemID)
+      #       # Mortality probability in the territory
+      #       #probMortRdTerr <- of(world = sim$roadMortMap, agents = newTerrCells)
+      #       probMortRdTerr <- sim$roadMortMap[newTerrCells[, 1], newTerrCells[, 2]] # faster
+      #       sim$lynx <- NLset(turtles = sim$lynx, agents = turtle(turtles = sim$lynx, who = searchingFemID),
+      #                         var = c("status", "rdMortTerr"),
+      #                         val = cbind(status = "res", rdMortTerr = mean(probMortRdTerr)))
+      #       # Save the data about the new residents
+      #       if(length(searchingFemID) != 0){
+      #         sim$resLynx[[time(sim, "year")[1]]] <- turtleSet(sim$resLynx[[time(sim, "year")[1]]], turtle(turtles = sim$lynx, who = searchingFemID))
+      #         sim$timeRes <- rbind(sim$timeRes, data.frame(who = searchingFemID, year =  time(sim, "year")[1], time = sim$day))
+      #       }
+      # 
+      #       # Male around to claim the female?
+      #       # Check for a male on an area equal to the home range size (95 % kernel density) of the males in the population
+      #       # Extract the distance to which look for a male as the radius of its home range size
+      #       if(terrSizeName == 1){
+      #         maxDistMale <- sqrt(P(sim)$terrSizeMAlps/pi)
+      #       }
+      #       if(terrSizeName == 2){
+      #         maxDistMale <- sqrt(P(sim)$terrSizeMJura/pi)
+      #       }
+      #       if(terrSizeName == 3){
+      #         maxDistMale <- sqrt(P(sim)$terrSizeMVosgesPalatinate/pi)
+      #       }
+      #       if(terrSizeName == 4){
+      #         maxDistMale <- sqrt(P(sim)$terrSizeMBlackForest/pi)
+      #       }
+      #       neighbTerrCells <- NetLogoR::inRadius(agents = turtle(turtles = sim$lynx, who = searchingFemID), radius = maxDistMale,
+      #                                             agents2 = patches(sim$habitatMap), world = sim$habitatMap, torus = FALSE)
+      # 
+      #       #neighbTerrCells <- unique(of(world = sim$terrMap, agents = neighbTerrCells))
+      #       neighbTerrCells <- unique(sim$terrMap[neighbTerrCells[, 1], neighbTerrCells[, 2]]) # faster
+      #       otherFemTerr <- neighbTerrCells[!is.na(neighbTerrCells) & neighbTerrCells != searchingFemID]
+      #       if(length(otherFemTerr) != 0) {
+      #         otherFem <- turtle(turtles = sim$lynx, who = otherFemTerr)
+      #         infoOtherFem <- otherFem@.Data[, "maleID"]
+      #         infoOtherFem <- infoOtherFem[!is.na(infoOtherFem)]
+      #         otherMal <- turtle(turtles = sim$lynx, who = infoOtherFem)
+      #         infoOtherMal <- otherMal@.Data[, "nFem"]
+      # 
+      #         if(length(infoOtherFem[infoOtherMal < 3]) != 0){
+      #           # Calculate the distances between the new female resident and all the available males
+      #           distFemaleMales <- NetLogoR::NLdist(agents = turtle(turtles = sim$lynx, who = searchingFemID),
+      #                                               agents2 = turtle(turtles = sim$lynx, who = infoOtherFem[infoOtherMal < 3]),
+      #                                               torus = FALSE)
+      #           selectedMal <- ifelse(length(infoOtherFem[infoOtherMal < 3]) == 1,
+      #                                 infoOtherFem[infoOtherMal < 3],
+      #                                 # Select the closest male if there are several available
+      #                                 infoOtherFem[infoOtherMal < 3][which.min(distFemaleMales)])
+      # 
+      #           # Associate the male to the female
+      #           sim$lynx <- NLset(turtles = sim$lynx, agents = turtle(turtles = sim$lynx, who = searchingFemID),
+      #                             var = "maleID", val = selectedMal)
+      #           selectedMalInd <- turtle(turtles = sim$lynx, who = selectedMal)
+      #           sim$lynx <- NLset(turtles = sim$lynx, agents = selectedMalInd, var = "nFem",
+      #                             val = selectedMalInd@.Data[, "nFem"] + 1)
+      #         }
+      #       }
+      # 
+      #     } # end if(length(terrCells) == terrSize)
+      #   } # end if(searchingFemCellType == 4 & is.na(searchingFemCellAvail))
+      # } # end for(searchingFemID in dispFemID)
+
+      # Identify females on breeding empty patches
+      searchingFemCell <- patchHere(world = sim$habitatMap, turtles = turtle(turtles = sim$lynx, who = dispFemID))
+      searchingFemCellType <- sim$habitatMap[searchingFemCell[, 1], searchingFemCell[, 2]] # faster
+      searchingFemCellAvail <- sim$terrMap[searchingFemCell[, 1], searchingFemCell[, 2]] # faster
+
+      searchingFemCell <- searchingFemCell[searchingFemCellType == 4 & is.na(searchingFemCellAvail), , drop = FALSE]
+      dispFemID <- dispFemID[searchingFemCellType == 4 & is.na(searchingFemCellAvail)] # females on breeding empty patches
+      # Remove where there are several females on the same patch (keep only one)
+      dispFemID <- dispFemID[!duplicated(searchingFemCell)]
+      searchingFemCell <- searchingFemCell[!duplicated(searchingFemCell), , drop = FALSE]
+
+      if(length(dispFemID) != 0){
+        # Patches available to build a territory (breeding and not already in a territory)
+        terrValues <- as.numeric(t(sim$terrMap@.Data)) # faster
+        availCellsUpdatedRas <- sim$availCellsRas
+        occupiedCells <- which(!is.na(terrValues))
+        availCellsUpdatedRas[occupiedCells] <- 0
+
+        # Spread from the female positions (loci) to available contiguous cells
+        # Find on which territory the female are
+        terrSizeName <- of(world = sim$popDist, agents = patchHere(world = sim$popDist, turtles = turtle(turtles = sim$lynx, who = dispFemID)))
+        terrSize <- terrSizeName
+        terrSize[which(terrSizeName == 1)] <- round(P(sim)$coreTerrSizeFAlps)
+        terrSize[which(terrSizeName == 2)] <- round(P(sim)$coreTerrSizeFJura)
+        terrSize[which(terrSizeName == 3)] <- round(P(sim)$coreTerrSizeFVosgesPalatinate)
+        terrSize[which(terrSizeName == 4)] <- round(P(sim)$coreTerrSizeFBlackForest)
+
+        terrDT <- spread(landscape = availCellsUpdatedRas, directions = 4,
+                         loci = cellFromPxcorPycor(world = sim$habitatMap,
+                                                   pxcor = searchingFemCell[, 1],
+                                                   pycor = searchingFemCell[, 2]),
+                         spreadProb = availCellsUpdatedRas, maxSize = terrSize, returnIndices = TRUE,
+                         quick = TRUE , allowOverlap = FALSE)
+
+        # How many unique patch per territory per female
+        uniquePatches <- terrDT %>%
+          group_by(id) %>%
+          summarise(count = n_distinct(indices))
+
+        # Females which can create a territory
+        dispFemIDsub <- dispFemID[which(uniquePatches$count >= terrSize)] # ranked in dispFemID order
+
+        if(length(dispFemIDsub) > 1){
+          # Now we need to see that territories are not overlapping
+          overlappingPatches <- as.numeric(names(table(terrDT$indices)[which(table(terrDT$indices)>1)]))
+          if(length(overlappingPatches) != 0){
+            for(eachOverPatch in overlappingPatches){
+              overlappedFem <- terrDT[terrDT$indices == eachOverPatch, "id"]
+              # Remove from dispFemIDsub the females that have overlapped patches but keeping the first one who claim the patch
+              dispFemIDsub <- dispFemIDsub[!dispFemIDsub %in% dispFemID[as.numeric(overlappedFem$id[-1])]]
+            }
+          }
+        }
+
+        for(searchingFemID in dispFemIDsub) {
+
+          terrCells <- unique(terrDT[terrDT$id == which(dispFemID == searchingFemID),][[3]]) # cells of the built territory
+          newTerrCells <- PxcorPycorFromCell(world = sim$habitatMap, cellNum = terrCells)
+
+          # Test
+          if(P(sim)$testON == TRUE) {
+            expect_true(all(is.na(of(world = sim$terrMap, agents = newTerrCells))))
+          }
+
+          # Claim the territory
+          sim$terrMap <- NLset(world = sim$terrMap, agents = newTerrCells, val = searchingFemID)
+          # Mortality probability in the territory
+          #probMortRdTerr <- of(world = sim$roadMortMap, agents = newTerrCells)
+          probMortRdTerr <- sim$roadMortMap[newTerrCells[, 1], newTerrCells[, 2]] # faster
+          sim$lynx <- NLset(turtles = sim$lynx, agents = turtle(turtles = sim$lynx, who = searchingFemID),
+                            var = c("status", "rdMortTerr"),
+                            val = cbind(status = "res", rdMortTerr = mean(probMortRdTerr)))
+          # Save the data about the new residents
+          sim$resLynx[[time(sim, "year")[1]]] <- turtleSet(sim$resLynx[[time(sim, "year")[1]]], turtle(turtles = sim$lynx, who = searchingFemID))
+          sim$timeRes <- rbind(sim$timeRes, data.frame(who = searchingFemID, year =  time(sim, "year")[1], time = sim$day))
+
+          # Male around to claim the female?
           terrSizeName <- of(world = sim$popDist, agents = patchHere(world = sim$popDist, turtles = turtle(turtles = sim$lynx, who = searchingFemID)))
-          # And assign the territory size according to her position
+          # Check for a male on an area equal to the home range size (95 % kernel density) of the males in the population
+          # Extract the distance to which look for a male as the radius of its home range size
           if(terrSizeName == 1){
-            terrSize <- round(P(sim)$coreTerrSizeFAlps)
+            maxDistMale <- sqrt(P(sim)$terrSizeMAlps/pi)
           }
           if(terrSizeName == 2){
-            terrSize <- round(P(sim)$coreTerrSizeFJura)
+            maxDistMale <- sqrt(P(sim)$terrSizeMJura/pi)
           }
           if(terrSizeName == 3){
-            terrSize <- round(P(sim)$coreTerrSizeFVosgesPalatinate)
+            maxDistMale <- sqrt(P(sim)$terrSizeMVosgesPalatinate/pi)
           }
           if(terrSizeName == 4){
-            terrSize <- round(P(sim)$coreTerrSizeFBlackForest)
+            maxDistMale <- sqrt(P(sim)$terrSizeMBlackForest/pi)
           }
-          terrDT <- spread(landscape = availCellsUpdatedRas,
-                           loci = cellFromPxcorPycor(world = sim$habitatMap,
-                                                     pxcor = searchingFemCell[, 1],
-                                                     pycor = searchingFemCell[, 2]),
-                           spreadProb = availCellsUpdatedRas, maxSize = terrSize, returnIndices = TRUE,
-                           quick = TRUE)
-          terrCells <- unique(terrDT$indices) # cells of the built territory
-          if(length(terrCells) == terrSize) {
-            newTerrCells <- PxcorPycorFromCell(world = sim$habitatMap, cellNum = terrCells)
-            
-            # Test
-            if(P(sim)$testON == TRUE) {
-              expect_true(all(is.na(of(world = sim$terrMap, agents = newTerrCells))))
-            }
-            
-            # Claim the territory
-            sim$terrMap <- NLset(world = sim$terrMap, agents = newTerrCells, val = searchingFemID)
-            # Mortality probability in the territory
-            #probMortRdTerr <- of(world = sim$roadMortMap, agents = newTerrCells)
-            probMortRdTerr <- sim$roadMortMap[newTerrCells[, 1], newTerrCells[, 2]] # faster
-            sim$lynx <- NLset(turtles = sim$lynx, agents = turtle(turtles = sim$lynx, who = searchingFemID),
-                              var = c("status", "rdMortTerr"),
-                              val = cbind(status = "res", rdMortTerr = mean(probMortRdTerr)))
-            # Save the data about the new residents
-            if(length(searchingFemID) != 0){
-              sim$resLynx[[time(sim, "year")[1]]] <- turtleSet(sim$resLynx[[time(sim, "year")[1]]], turtle(turtles = sim$lynx, who = searchingFemID))
-              sim$timeRes <- rbind(sim$timeRes, data.frame(who = searchingFemID, year =  time(sim, "year")[1], time = sim$day))
-            }
-            
-            # Male around to claim the female?
-            # Check for a male on an area equal to the home range size (95 % kernel density) of the males in the population
-            # Extract the distance to which look for a male as the radius of its home range size
-            if(terrSizeName == 1){
-              maxDistMale <- sqrt(P(sim)$terrSizeMAlps/pi)
-            }
-            if(terrSizeName == 2){
-              maxDistMale <- sqrt(P(sim)$terrSizeMJura/pi)
-            }
-            if(terrSizeName == 3){
-              maxDistMale <- sqrt(P(sim)$terrSizeMVosgesPalatinate/pi)
-            }
-            if(terrSizeName == 4){
-              maxDistMale <- sqrt(P(sim)$terrSizeMBlackForest/pi)
-            }
-            neighbTerrCells <- NetLogoR::inRadius(agents = turtle(turtles = sim$lynx, who = searchingFemID), radius = maxDistMale,
-                                                  agents2 = patches(sim$habitatMap), world = sim$habitatMap, torus = FALSE)
-            
-            #neighbTerrCells <- unique(of(world = sim$terrMap, agents = neighbTerrCells))
-            neighbTerrCells <- unique(sim$terrMap[neighbTerrCells[, 1], neighbTerrCells[, 2]]) # faster
-            otherFemTerr <- neighbTerrCells[!is.na(neighbTerrCells) & neighbTerrCells != searchingFemID]
-            if(length(otherFemTerr) != 0) {
-              otherFem <- turtle(turtles = sim$lynx, who = otherFemTerr)
-              infoOtherFem <- otherFem@.Data[, "maleID"]
-              infoOtherFem <- infoOtherFem[!is.na(infoOtherFem)]
-              otherMal <- turtle(turtles = sim$lynx, who = infoOtherFem)
-              infoOtherMal <- otherMal@.Data[, "nFem"]
+          neighbTerrCells <- NetLogoR::inRadius(agents = turtle(turtles = sim$lynx, who = searchingFemID), radius = maxDistMale,
+                                                agents2 = patches(sim$habitatMap), world = sim$habitatMap, torus = FALSE)
 
-              if(length(infoOtherFem[infoOtherMal < 3]) != 0){
-                # Calculate the distances between the new female resident and all the available males
-                distFemaleMales <- NetLogoR::NLdist(agents = turtle(turtles = sim$lynx, who = searchingFemID),
-                                                    agents2 = turtle(turtles = sim$lynx, who = infoOtherFem[infoOtherMal < 3]),
-                                                    torus = FALSE)
-                selectedMal <- ifelse(length(infoOtherFem[infoOtherMal < 3]) == 1,
-                                      infoOtherFem[infoOtherMal < 3],
-                                      # Select the closest male if there are several available
-                                      infoOtherFem[infoOtherMal < 3][which.min(distFemaleMales)])
-                                      
-                # Associate the male to the female
-                sim$lynx <- NLset(turtles = sim$lynx, agents = turtle(turtles = sim$lynx, who = searchingFemID),
-                                  var = "maleID", val = selectedMal)
-                selectedMalInd <- turtle(turtles = sim$lynx, who = selectedMal)
-                sim$lynx <- NLset(turtles = sim$lynx, agents = selectedMalInd, var = "nFem",
-                                  val = selectedMalInd@.Data[, "nFem"] + 1)
-              }
+          #neighbTerrCells <- unique(of(world = sim$terrMap, agents = neighbTerrCells))
+          neighbTerrCells <- unique(sim$terrMap[neighbTerrCells[, 1], neighbTerrCells[, 2]]) # faster
+          otherFemTerr <- neighbTerrCells[!is.na(neighbTerrCells) & neighbTerrCells != searchingFemID]
+          if(length(otherFemTerr) != 0) {
+            otherFem <- turtle(turtles = sim$lynx, who = otherFemTerr)
+            infoOtherFem <- otherFem@.Data[, "maleID"]
+            infoOtherFem <- infoOtherFem[!is.na(infoOtherFem)]
+            otherMal <- turtle(turtles = sim$lynx, who = infoOtherFem)
+            infoOtherMal <- otherMal@.Data[, "nFem"]
+
+            if(length(infoOtherFem[infoOtherMal < 3]) != 0){
+              # Calculate the distances between the new female resident and all the available males
+              distFemaleMales <- NetLogoR::NLdist(agents = turtle(turtles = sim$lynx, who = searchingFemID),
+                                                  agents2 = turtle(turtles = sim$lynx, who = infoOtherFem[infoOtherMal < 3]),
+                                                  torus = FALSE)
+              selectedMal <- ifelse(length(infoOtherFem[infoOtherMal < 3]) == 1,
+                                    infoOtherFem[infoOtherMal < 3],
+                                    # Select the closest male if there are several available
+                                    infoOtherFem[infoOtherMal < 3][which.min(distFemaleMales)])
+
+              # Associate the male to the female
+              sim$lynx <- NLset(turtles = sim$lynx, agents = turtle(turtles = sim$lynx, who = searchingFemID),
+                                var = "maleID", val = selectedMal)
+              selectedMalInd <- turtle(turtles = sim$lynx, who = selectedMal)
+              sim$lynx <- NLset(turtles = sim$lynx, agents = selectedMalInd, var = "nFem",
+                                val = selectedMalInd@.Data[, "nFem"] + 1)
             }
-            
-          } # end if(length(terrCells) == terrSize)
-        } # end if(searchingFemCellType == 4 & is.na(searchingFemCellAvail))
-      } # end for(searchingFemID in dispFemID)
+          }
+        } # for(searchingFemID in dispFemID)
+      } # if(length(dispFemID) != 0)
+      
+
     } # end if(NLcount(dispFem) != 0)
     
     # Male dispersers
