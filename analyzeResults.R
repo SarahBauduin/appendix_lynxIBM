@@ -520,6 +520,36 @@ ggplot(movePopLongDTSum2, aes(x = year, y = Cum.Sum, colour = Populations)) +
   annotate("rect", xmin = -Inf, xmax = 10, ymin = -Inf, ymax = Inf, alpha = .7)
 
 
+# Non-cumulative number of individuals
+library(Rmisc)
+library(dplyr)
+
+movePopLongDT <- melt(setDT(as.data.frame(movePop)), id = c("repSim", "year"))
+movePopDF <- as.data.frame(movePopLongDT) 
+meanMovePop <- movePopDF %>% group_by(year, variable) %>% 
+  summarize(mean = mean(value),
+            lower = CI(value)[3],
+            upper = CI(value)[1])
+meanMovePop[meanMovePop$lower < 0, "lower"] <- 0
+
+# Plot
+colRainbow <- rainbow_hcl(n = 12, c = 130, l = 70)
+
+ggplot(meanMovePop, aes(x = year, y = mean, colour = variable)) + 
+  #geom_ribbon(aes(ymin = lower, ymax = upper, x = year, fill = variable), alpha = 0.3) +
+  geom_line() +
+  geom_point() +
+  labs(x= "Years simulated", y = "Number of individuals establishing outside of their native population", color = "Populations") +
+  scale_color_manual(values = colRainbow, name = "", labels = c("Alps to Jura", "Alps to Black Forest", "Alps to Vosges-Palatinate", "Jura to Alps",
+                                                     "Jura to Black Forest", "Jura to Vosges-Palatinate", "Black Forest to Alps",
+                                                     "Black Forest to Jura", "Black Forest to Vosges-Palatinate", "Vosges-Palatinate to Alps",
+                                                     "Vosges-Palatinate to Black Forest", "Vosges-Palatinate to Jura")) +
+  guides(color = guide_legend(ncol = 3)) + 
+  #scale_fill_manual(values = colRainbow) +
+  annotate("rect", xmin = -Inf, xmax = 10, ymin = -Inf, ymax = Inf, alpha = .7) +
+  theme(legend.position = "bottom")
+
+
 #########################
 ## Territory occupancy ##
 #########################
