@@ -16,7 +16,7 @@ defineModule(sim, list(
   timeunit = "year",
   citation = list("citation.bib"),
   documentation = deparse(list("README.txt", "lynxIBM.Rmd")),
-  reqdPkgs = list("NetLogoR", "testthat", "SpaDES", "randomcoloR", "data.table", "dplyr", "doBy", "terra", "sf"),
+  reqdPkgs = list("NetLogoR", "testthat", "SpaDES", "randomcoloR", "data.table", "dplyr", "doBy"),
   parameters = rbind(
     defineParameter(".plotInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first plot event should occur"),
     defineParameter(".plotInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between plot events"),
@@ -171,7 +171,7 @@ initSim <- function(sim) {
   
   # Individuals going out of the landscape die
   # The mortality probability on landscape borders needs to be = 1
-  allPatches <- patches(sim$habitatMap)
+  allPatches <- NetLogoR::patches(sim$habitatMap)
   borders <- allPatches[allPatches[, "pxcor"] %in% c(minPxcor(sim$habitatMap),
                                                      maxPxcor(sim$habitatMap)) |
                           allPatches[, "pycor"] %in% c(minPycor(sim$habitatMap),
@@ -179,7 +179,7 @@ initSim <- function(sim) {
   # The "borders" of the world are patches with data values in them (no collisions probabilities)
   # Need to replace NA (world borders not defined) by 1 and all the neighboring cells of these patches to have a line of cells along the borders with mortality = 1
   # so that individuals won't have NA values in cell type (from the habitat map) when doing neighbors because they would have died before if going too close of the borders
-  bordersNA <- NLwith(agents = patches(sim$roadMortMap), world = sim$roadMortMap, val = NA)
+  bordersNA <- NLwith(agents = NetLogoR::patches(sim$roadMortMap), world = sim$roadMortMap, val = NA)
   bordersAll <- patchSet(borders, bordersNA) #remove the duplicates
   # Patches neighbors of these patches = 1 row of cell
   bordersPlus <- NetLogoR::neighbors(world = sim$roadMortMap, agents = bordersAll, nNeighbors = 8, torus = FALSE)
@@ -230,7 +230,7 @@ initSim <- function(sim) {
   patchLynx <- patchHere(world = sim$habitatMap, turtles = sim$lynx)
   habHereLynx <- of(world = sim$habitatMap, agents = patchLynx) # habitats were the lynx are
   if(length(habHereLynx[habHereLynx %in% c(0, 2)]) != 0){ # if there are some lynx on barrier or matrice habitats
-    allGoodHab <- NLwith(world = sim$habitatMap, agents = patches(sim$habitatMap), val = c(3, 4)) # find the dispersing and breeding habitats
+    allGoodHab <- NLwith(world = sim$habitatMap, agents = NetLogoR::patches(sim$habitatMap), val = c(3, 4)) # find the dispersing and breeding habitats
     distGoodHab <- NLdist(agents = patchLynx[habHereLynx %in% c(0, 2), , drop = FALSE], agents2 = allGoodHab,
                           world = sim$habitatMap, torus = FALSE, allPairs = TRUE)
     if(class(distGoodHab) == "matrix"){ # more than 1 individual = several patches = matrix
@@ -280,7 +280,7 @@ initSim <- function(sim) {
   sim$outputLynx[[1]] <- sim$lynx
   sim$outputTerrMap <- list()
   sim$outputTerrMap[[1]] <- sim$terrMap
-  sim$connectivityMap <- NLset(world = sim$habitatMap, agents = patches(sim$habitatMap), val = 0)
+  sim$connectivityMap <- NLset(world = sim$habitatMap, agents = NetLogoR::patches(sim$habitatMap), val = 0)
   sim$nColl <- data.frame(ncoll = numeric(), time = numeric())
   sim$bornLynx <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # born individuals each year
   sim$parentsRepro <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # reproducing parents each year
@@ -471,7 +471,7 @@ mortality <- function(sim) {
     }
     
     # Empty territories belonging to dead females
-    cellDeadFem <- NLwith(world = sim$terrMap, agents = patches(sim$terrMap), val = deadWhoRes)
+    cellDeadFem <- NLwith(world = sim$terrMap, agents = NetLogoR::patches(sim$terrMap), val = deadWhoRes)
     sim$terrMap <- NLset(world = sim$terrMap, agents = cellDeadFem, val = NA)
     
     # Remove dead females associated to males
@@ -538,7 +538,7 @@ mortality <- function(sim) {
       expect_true(NROW(locKitty) <= NLcount(lynxResFem))
       expect_equivalent(sum(infoPop[,"nFem"]), length(infoPop[,"maleID"][!is.na(infoPop[,"maleID"])]))
       expect_true(all(of(agents = sim$lynx, var = "nFem") >= 0))
-      terrNumTerrMap <- unique(of(world = sim$terrMap, agents = patches(sim$terrMap)))
+      terrNumTerrMap <- unique(of(world = sim$terrMap, agents = NetLogoR::patches(sim$terrMap)))
       terrNumLynx <- of(agents = NLwith(agents = NLwith(agents = sim$lynx, var = "sex", val = "F"),
                                         var = "status", val = "res"), var = "who")
       expect_true(all(terrNumTerrMap[!is.na(terrNumTerrMap)] %in% terrNumLynx))
@@ -588,6 +588,7 @@ dispersal <- function(sim) {
           expect_true(all(infoDispersingInd[, "steps"] >= step))
           infoNonDispersingInd <- of(agents = nonDispersingInd, var = c("status", "steps"))
           if(NLcount(nonDispersingInd) != 0){
+            print(infoNonDispersingInd)
             expect_true(all(infoNonDispersingInd[, "status"] == "res" |
                               infoNonDispersingInd[, "steps"] < step))
           }
@@ -922,7 +923,7 @@ dispersal <- function(sim) {
       if(sum(statusDeadDisp == "res") != 0) {
 
         # Territories of dead females
-        cellDeadFem <- NLwith(world = sim$terrMap, agents = patches(sim$terrMap), val = deadWhoDaily)
+        cellDeadFem <- NLwith(world = sim$terrMap, agents = NetLogoR::patches(sim$terrMap), val = deadWhoDaily)
         sim$terrMap <- NLset(world = sim$terrMap, agents = cellDeadFem, val = NA)
         
         # Males associated to dead females
@@ -982,7 +983,7 @@ dispersal <- function(sim) {
         expect_true(all(infoPop[,"maleID"][!is.na(infoPop[,"maleID"])] %in% infoPop[,"who"]))
         expect_equivalent(sum(infoPop[,"nFem"]), length(infoPop[,"maleID"][!is.na(infoPop[,"maleID"])]))
         expect_true(all(of(agents = sim$lynx, var = "nFem") >= 0))
-        terrNumTerrMap <- unique(of(world = sim$terrMap, agents = patches(sim$terrMap)))
+        terrNumTerrMap <- unique(of(world = sim$terrMap, agents = NetLogoR::patches(sim$terrMap)))
         terrNumLynx <- of(agents = NLwith(agents = NLwith(agents = sim$lynx, var = "sex", val = "F"),
                                           var = "status", val = "res"), var = "who")
         expect_true(all(terrNumTerrMap[!is.na(terrNumTerrMap)] %in% terrNumLynx))
@@ -1021,7 +1022,7 @@ dispersal <- function(sim) {
         deadWhoFormerDisp <- infoFormerDisp[,"who"][deathFormerDispRd == 1]
         
         # Empty territories belonging to dead females
-        cellDeadFem <- NLwith(world = sim$terrMap, agents = patches(sim$terrMap), val = deadWhoFormerDisp)
+        cellDeadFem <- NLwith(world = sim$terrMap, agents = NetLogoR::patches(sim$terrMap), val = deadWhoFormerDisp)
         sim$terrMap <- NLset(world = sim$terrMap, agents = cellDeadFem, val = NA)
         
         # Remove dead females associated to males
@@ -1073,7 +1074,7 @@ dispersal <- function(sim) {
           expect_true(NROW(locKitty) <= NLcount(lynxResFem))
           expect_equivalent(sum(infoPop[,"nFem"]), length(infoPop[,"maleID"][!is.na(infoPop[,"maleID"])]))
           expect_true(all(of(agents = sim$lynx, var = "nFem") >= 0))
-          terrNumTerrMap <- unique(of(world = sim$terrMap, agents = patches(sim$terrMap)))
+          terrNumTerrMap <- unique(of(world = sim$terrMap, agents = NetLogoR::patches(sim$terrMap)))
           terrNumLynx <- of(agents = NLwith(agents = NLwith(agents = sim$lynx, var = "sex", val = "F"),
                                             var = "status", val = "res"), var = "who")
           expect_true(all(terrNumTerrMap[!is.na(terrNumTerrMap)] %in% terrNumLynx))
@@ -1111,7 +1112,7 @@ searchTerritory <- function(sim) {
       #   searchingFemCellAvail <- sim$terrMap[searchingFemCell[, 1], searchingFemCell[, 2]] # faster
       # 
       #   if(searchingFemCellType == 4 & is.na(searchingFemCellAvail)){ # current position
-      #     #terrValues <- of(world = sim$terrMap, agents = patches(sim$terrMap))
+      #     #terrValues <- of(world = sim$terrMap, agents = NetLogoR::patches(sim$terrMap))
       #     terrValues <- as.numeric(t(sim$terrMap@.Data)) # faster
       #     availCellsUpdatedRas <- sim$availCellsRas
       #     occupiedCells <- which(!is.na(terrValues))
@@ -1178,7 +1179,7 @@ searchTerritory <- function(sim) {
       #         maxDistMale <- sqrt(P(sim)$terrSizeMBlackForest/pi)
       #       }
       #       neighbTerrCells <- NetLogoR::inRadius(agents = turtle(turtles = sim$lynx, who = searchingFemID), radius = maxDistMale,
-      #                                             agents2 = patches(sim$habitatMap), world = sim$habitatMap, torus = FALSE)
+      #                                             agents2 = NetLogoR::patches(sim$habitatMap), world = sim$habitatMap, torus = FALSE)
       # 
       #       #neighbTerrCells <- unique(of(world = sim$terrMap, agents = neighbTerrCells))
       #       neighbTerrCells <- unique(sim$terrMap[neighbTerrCells[, 1], neighbTerrCells[, 2]]) # faster
@@ -1306,7 +1307,7 @@ searchTerritory <- function(sim) {
             maxDistMale <- sqrt(P(sim)$terrSizeMBlackForest/pi)
           }
           neighbTerrCells <- NetLogoR::inRadius(agents = turtle(turtles = sim$lynx, who = searchingFemID), radius = maxDistMale,
-                                                agents2 = patches(sim$habitatMap), world = sim$habitatMap, torus = FALSE)
+                                                agents2 = NetLogoR::patches(sim$habitatMap), world = sim$habitatMap, torus = FALSE)
 
           #neighbTerrCells <- unique(of(world = sim$terrMap, agents = neighbTerrCells))
           neighbTerrCells <- unique(sim$terrMap[neighbTerrCells[, 1], neighbTerrCells[, 2]]) # faster
@@ -1396,7 +1397,7 @@ searchTerritory <- function(sim) {
             maxDistMale <- sqrt(P(sim)$terrSizeMBlackForest/pi)
           }
           neighbTerrCells <- NetLogoR::inRadius(agents = turtle(turtles = sim$lynx, who = searchingMaleID), radius = maxDistMale,
-                                                agents2 = patches(sim$habitatMap), world = sim$habitatMap, torus = FALSE)
+                                                agents2 = NetLogoR::patches(sim$habitatMap), world = sim$habitatMap, torus = FALSE)
           
           neighbTerrCells <- unique(sim$terrMap[neighbTerrCells[, 1], neighbTerrCells[, 2]]) # faster
           otherFemTerr <- neighbTerrCells[!is.na(neighbTerrCells) & neighbTerrCells != whoFemEncountered]
@@ -1430,7 +1431,7 @@ searchTerritory <- function(sim) {
     
     # Test
     if(P(sim)$testON == TRUE) {
-      terrNumber <- of(world = sim$terrMap, agents = patches(sim$terrMap))
+      terrNumber <- of(world = sim$terrMap, agents = NetLogoR::patches(sim$terrMap))
       terrNumber <- terrNumber[!is.na(terrNumber)]
       expect_true(all(table(terrNumber) >= min(c(P(sim)$coreTerrSizeFAlps, P(sim)$coreTerrSizeFJura, P(sim)$coreTerrSizeFVosgesPalatinate,
                                                  P(sim)$coreTerrSizeFBlackForest))))
@@ -1441,7 +1442,7 @@ searchTerritory <- function(sim) {
       expect_equivalent(as.numeric(nFemPerMal),
                         infoPop[infoPop[, "who"] %in% as.numeric(names(nFemPerMal)), "nFem"])
       expect_true(all(sim$lynx@.Data[, "nFem"] >= 0 & sim$lynx@.Data[, "nFem"] <= 3))
-      terrNumTerrMap <- unique(of(world = sim$terrMap, agents = patches(sim$terrMap)))
+      terrNumTerrMap <- unique(of(world = sim$terrMap, agents = NetLogoR::patches(sim$terrMap)))
       terrNumLynx <- of(agents = NLwith(agents = NLwith(agents = sim$lynx, var = "sex", val = "F"),
                                         var = "status", val = "res"), var = "who")
       expect_true(all(terrNumTerrMap[!is.na(terrNumTerrMap)] %in% terrNumLynx))
