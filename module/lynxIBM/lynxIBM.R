@@ -16,7 +16,7 @@ defineModule(sim, list(
   timeunit = "year",
   citation = list("citation.bib"),
   documentation = deparse(list("README.txt", "lynxIBM.Rmd")),
-  reqdPkgs = list("NetLogoR", "testthat", "SpaDES", "raster", "randomcoloR", "data.table", "dplyr", "doBy"),
+  reqdPkgs = list("NetLogoR", "testthat", "SpaDES", "randomcoloR", "data.table", "dplyr", "doBy", "terra", "sf"),
   parameters = rbind(
     defineParameter(".plotInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first plot event should occur"),
     defineParameter(".plotInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between plot events"),
@@ -39,12 +39,12 @@ defineModule(sim, list(
     defineParameter("sMaxPs", "numeric", 45, NA, NA, "Maximum number of intraday movement steps"),
     defineParameter("pMat", "numeric", 0.03, NA, NA, "Probability of stepping into matrix cells"),
     defineParameter("pCorr", "numeric", 0.5, NA, NA, "Movement correlation probability"),
-    defineParameter("pMortDispAlps", "numeric", 0.0007, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps - Parameter calibrated with simulations"),
-    defineParameter("pMortDispJura", "numeric", 0.0012, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura - Parameter calibrated with simulations"),
-    defineParameter("pMortDispVosgesPalatinate", "numeric", 0.0012, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate - Parameter calibrated with simulations"),
-    defineParameter("pMortDispBlackForest", "numeric", 0.0012, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest - Parameter calibrated with simulations"),
+    defineParameter("pMortDispAlps", "numeric", 0.0005, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps - Parameter calibrated with simulations"),
+    defineParameter("pMortDispJura", "numeric", 0.001, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura - Parameter calibrated with simulations"),
+    defineParameter("pMortDispVosgesPalatinate", "numeric", 0.001, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate - Parameter calibrated with simulations"),
+    defineParameter("pMortDispBlackForest", "numeric", 0.001, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest - Parameter calibrated with simulations"),
     defineParameter("corrFactorRes", "numeric", 2.5, NA, NA, "Correction factor for road mortality risk for residents - Parameter calibrated with simulations"),
-    defineParameter("corrFactorDisp", "numeric", 125, NA, NA, "Correction factor for road mortality risk for dispersers - Parameter calibrated with simulations"),
+    defineParameter("corrFactorDisp", "numeric", 175, NA, NA, "Correction factor for road mortality risk for dispersers - Parameter calibrated with simulations"),
     defineParameter("nMatMax", "numeric", 10, NA, NA, "Maximum number of consecutive steps within which the individual needs to find dispsersal habitat"),
     defineParameter("coreTerrSizeFAlps", "numeric", 97, NA, NA, "Core size for a female territory (km2) in the Alps"),
     defineParameter("coreTerrSizeFJura", "numeric", 126, NA, NA, "Core size for a female territory (km2) in the Jura"),
@@ -147,7 +147,7 @@ initSim <- function(sim) {
                                 maxPxcor = NCOL(habitatRaster),
                                 minPycor = 1,
                                 maxPycor = NROW(habitatRaster),
-                                data = values(habitatRaster))
+                                data = values(habitatRaster, mat = FALSE))
 
   # Road mortality map as a worldMatrix
   roadMortRaster <- sim$collProbSpaDES # input raster of the collision probabilities
@@ -155,7 +155,7 @@ initSim <- function(sim) {
                                  maxPxcor = NCOL(roadMortRaster),
                                  minPycor = 1,
                                  maxPycor = NROW(roadMortRaster),
-                                 data = values(roadMortRaster))
+                                 data = values(roadMortRaster, mat = FALSE))
   
   # Distribution of the population as a worldMatrix
   # Alps = 1
@@ -167,7 +167,7 @@ initSim <- function(sim) {
                              maxPxcor = NCOL(populationDist),
                              minPycor = 1,
                              maxPycor = NROW(populationDist),
-                             data = values(populationDist))
+                             data = values(populationDist, mat = FALSE))
   
   # Individuals going out of the landscape die
   # The mortality probability on landscape borders needs to be = 1
@@ -204,7 +204,7 @@ initSim <- function(sim) {
   sim$availCellsRas <- world2raster(availCells)
   
   # Lynx population
-  sim$lynx <- spdf2turtles(sim$popInitSpaDES) # input SPDF of individual location, ID, pop, sex and age
+  sim$lynx <- sf2turtles(sim$popInitSpaDES) # input sf object of individual location, ID, pop, sex and age
   # Renaming the 4 populations
   sim$lynx <- NLset(turtles = sim$lynx,
                     agents = NLwith(agents = sim$lynx, var = "pop", val = c("France_Alps", "Switzerland_Alps")),
@@ -219,10 +219,10 @@ initSim <- function(sim) {
                     agents = NLwith(agents = sim$lynx, var = "pop", val = c("Germany_Bade")),
                     var = "pop", val = "BlackForest")
   sim$lynx@.Data <- subset(sim$lynx@.Data, select = -ID) # remove the "ID" column
-  # Coordinates of the lynx regarding the cellnumber of the cells they ae on (their location will be round number = patches coordinates)
+  # Coordinates of the lynx regarding the cellnumber of the cells they are on (their location will be round number = patches coordinates)
   rasterCellNumber <- habitatRaster
-  rasterCellNumber[] <- 1:length(rasterCellNumber)
-  lynxCellNumber <- raster::extract(rasterCellNumber, sim$popInitSpaDES)
+  rasterCellNumber[] <- 1:length(cells(rasterCellNumber))
+  lynxCellNumber <- terra::extract(rasterCellNumber, sim$popInitSpaDES)[, 2] # the 1st column is the sim$popInitSpaDES ID
   lynxCoord <- PxcorPycorFromCell(world = sim$habitatMap, cellNum = lynxCellNumber)
   colnames(lynxCoord) <- c("xcor", "ycor")
   sim$lynx <- NLset(turtles = sim$lynx, agents = sim$lynx, var = c("xcor", "ycor"), val = lynxCoord)

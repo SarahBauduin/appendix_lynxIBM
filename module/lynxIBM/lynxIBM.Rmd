@@ -6,7 +6,8 @@ output: pdf_document
 ```{r module_usage}
 library(igraph)
 library(SpaDES.core)
-library(raster)
+library(terra)
+library(sf)
 
 # Where is located your appendix_lynxIBM repo
 pathRepo <- "C:/Users/sarah.bauduin/Documents/GitHub/" # change to your path
@@ -27,14 +28,14 @@ parameters <- list(
 
 # Input files
 # Habitat quality raster
-habMapSpaDES <- raster(paste0(pathRepo, "appendix_lynxIBM/module/inputs/habMap.tif"))
+habMapSpaDES <- rast(paste0(pathRepo, "appendix_lynxIBM/module/inputs/habMap.tif"))
 # Collision probabilities raster
-collProbSpaDES <- raster(paste0(pathRepo, "appendix_lynxIBM/module/inputs/collProb.tif"))
-# List of 500 different initial population (SpatialPointsDataFrame)
+collProbSpaDES <- rast(paste0(pathRepo, "appendix_lynxIBM/module/inputs/collProb.tif"))
+# List of 500 different initial population (sf object)
 load(paste0(pathRepo, "appendix_lynxIBM/module/inputs/listLynxInitPop.RData"))
 popInitSpaDES <- listLynxInitPop[[sample(1:length(listLynxInitPop), 1)]] # sample one initial population
 # Population areas raster
-fourPopSpaDES <- raster(paste0(pathRepo, "appendix_lynxIBM/module/inputs/fourPop.tif"))
+fourPopSpaDES <- rast(paste0(pathRepo, "appendix_lynxIBM/module/inputs/fourPop.tif"))
 
 modules <- list("lynxIBM")
 objects = c("habMapSpaDES", "collProbSpaDES", "popInitSpaDES", "fourPopSpaDES")
