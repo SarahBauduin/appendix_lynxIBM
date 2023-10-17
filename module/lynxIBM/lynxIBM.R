@@ -151,6 +151,7 @@ initSim <- function(sim) {
 
   # Road mortality map as a worldMatrix
   roadMortRaster <- sim$collProbSpaDES # input raster of the collision probabilities
+  roadMortRaster[is.nan(roadMortRaster)] <- NA
   sim$roadMortMap <- createWorld(minPxcor = 1,
                                  maxPxcor = NCOL(roadMortRaster),
                                  minPycor = 1,
@@ -282,18 +283,18 @@ initSim <- function(sim) {
   sim$outputTerrMap[[1]] <- sim$terrMap
   sim$connectivityMap <- NLset(world = sim$habitatMap, agents = NetLogoR::patches(sim$habitatMap), val = 0)
   sim$nColl <- data.frame(ncoll = numeric(), time = numeric())
-  sim$bornLynx <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # born individuals each year
-  sim$parentsRepro <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # reproducing parents each year
-  sim$deadLynxColl <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # dead lynx by collisions each year
-  sim$deadLynxNoColl <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # dead lynx other than by collision each year
-  sim$deadOldLynx <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # dead lynx because of old age each year
-  sim$resLynx <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # individuals becoming resident each year
+  sim$bornLynx <- rep(list(turtle(sim$lynx, who = -1)), times(sim)$end[1]) # born individuals each year
+  sim$parentsRepro <- rep(list(turtle(sim$lynx, who = -1)), times(sim)$end[1]) # reproducing parents each year
+  sim$deadLynxColl <- rep(list(turtle(sim$lynx, who = -1)), times(sim)$end[1]) # dead lynx by collisions each year
+  sim$deadLynxNoColl <- rep(list(turtle(sim$lynx, who = -1)), times(sim)$end[1]) # dead lynx other than by collision each year
+  sim$deadOldLynx <- rep(list(turtle(sim$lynx, who = -1)), times(sim)$end[1]) # dead lynx because of old age each year
+  sim$resLynx <- rep(list(turtle(sim$lynx, who = -1)), times(sim)$end[1]) # individuals becoming resident each year
   sim$timRes <- data.frame(who = numeric(), year = numeric(), time = numeric()) # at which time individuals became resident
   sim$deadDisp <- data.frame(nDisp = numeric(), nDispDeadColl = numeric(), nDispDeadDaily = numeric(), time = numeric()) # how many lynx died during dispersal
   # Individuals that will disperse the following year
   sim$dispOfTheYear <- NLwith(agents = sim$lynx, var = "status", val = "disp")
   # Females that can reproduce 
-  sim$FemRes <- rep(list(sim$lynx[0, ]), times(sim)$end[1])
+  sim$FemRes <- rep(list(turtle(sim$lynx, who = -1)), times(sim)$end[1])
   sim$nKittyBorn <- list()
   sim$dailyDist <- data.frame(dailyDist = numeric(), year = numeric())
   sim$occHab <- data.frame(occHab = numeric(), year = numeric())
@@ -588,7 +589,6 @@ dispersal <- function(sim) {
           expect_true(all(infoDispersingInd[, "steps"] >= step))
           infoNonDispersingInd <- of(agents = nonDispersingInd, var = c("status", "steps"))
           if(NLcount(nonDispersingInd) != 0){
-            print(infoNonDispersingInd)
             expect_true(all(infoNonDispersingInd[, "status"] == "res" |
                               infoNonDispersingInd[, "steps"] < step))
           }
@@ -750,18 +750,17 @@ dispersal <- function(sim) {
               chosenCells <- as.data.frame(chosenCells)
               chosenCells[chosenCells[, "cellType"] == 2, c("pxcor", "pycor")][
                 dispersingIndMatnSteps + 1 == P(sim)$nMatMax, ] <- dispersingIndMat[
-                  dispersingIndMatnSteps + 1 == P(sim)$nMatMax]@.Data[, c("lastDispX", "lastDispY")]
+                  dispersingIndMatnSteps + 1 == P(sim)$nMatMax, , drop = FALSE]@.Data[, c("lastDispX", "lastDispY"), drop = FALSE]
               
               # Test
               if(P(sim)$testON == TRUE) {
                 expect_equivalent(of(agents = NLwith(agents = dispersingInd, var = "nMat", val = P(sim)$nMatMax),
                                      var = "who"),
-                                  of(agents = dispersingIndMat[dispersingIndMatnSteps + 1 == P(sim)$nMatMax],
-                                     var = "who"))
+                                  of(agents = dispersingIndMat, var = "who")[dispersingIndMatnSteps + 1 == P(sim)$nMatMax])
                 expect_equivalent(of(agents = NLwith(agents = dispersingInd, var = "nMat", val = P(sim)$nMatMax),
                                      var = c("lastDispX", "lastDispY")),
-                                  dispersingIndMat[dispersingIndMatnSteps + 1 == P(sim)$nMatMax]@.Data[
-                                    , c("lastDispX", "lastDispY")])
+                                  dispersingIndMat[dispersingIndMatnSteps + 1 == P(sim)$nMatMax, , drop = FALSE]@.Data[
+                                    , c("lastDispX", "lastDispY"), drop = FALSE])
               }
               
               # Reset nMat
