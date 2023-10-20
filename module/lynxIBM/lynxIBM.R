@@ -16,7 +16,7 @@ defineModule(sim, list(
   timeunit = "year",
   citation = list("citation.bib"),
   documentation = deparse(list("README.txt", "lynxIBM.Rmd")),
-  reqdPkgs = list("NetLogoR", "testthat", "SpaDES", "randomcoloR", "data.table", "dplyr", "doBy"),
+  reqdPkgs = list("NetLogoR", "testthat", "SpaDES", "randomcoloR", "data.table", "dplyr", "doBy", "terra"),
   parameters = rbind(
     defineParameter(".plotInitialTime", "numeric", NA, NA, NA, "This describes the simulation time at which the first plot event should occur"),
     defineParameter(".plotInterval", "numeric", NA, NA, NA, "This describes the simulation time interval between plot events"),
@@ -170,23 +170,22 @@ initSim <- function(sim) {
                              maxPycor = NROW(populationDist),
                              data = values(populationDist, mat = FALSE))
   
-  # Individuals going out of the landscape die
-  # The mortality probability on landscape borders needs to be = 1
+  # Individuals going out of the landscape "bounce" so that we don't interfer on mortality probabilities
+  # The habitat quality on landscape borders needs to be = 0 (barriers)
   allPatches <- NetLogoR::patches(sim$habitatMap)
   borders <- allPatches[allPatches[, "pxcor"] %in% c(minPxcor(sim$habitatMap),
                                                      maxPxcor(sim$habitatMap)) |
                           allPatches[, "pycor"] %in% c(minPycor(sim$habitatMap),
                                                        maxPycor(sim$habitatMap)), ]
-  # The "borders" of the world are patches with data values in them (no collisions probabilities)
-  # Need to replace NA (world borders not defined) by 1 and all the neighboring cells of these patches to have a line of cells along the borders with mortality = 1
-  # so that individuals won't have NA values in cell type (from the habitat map) when doing neighbors because they would have died before if going too close of the borders
+  # The "borders" of the world are patches with habitat values in them
+  # Need to use the mortality map
   bordersNA <- NLwith(agents = NetLogoR::patches(sim$roadMortMap), world = sim$roadMortMap, val = NA)
   bordersAll <- patchSet(borders, bordersNA) #remove the duplicates
   # Patches neighbors of these patches = 1 row of cell
   bordersPlus <- NetLogoR::neighbors(world = sim$roadMortMap, agents = bordersAll, nNeighbors = 8, torus = FALSE)
-  # Need a second row of patches transformed into 1 otherwise on the border, still NA for the landscape
+  # Need a second row of patches transformed into 0 otherwise on the border
   bordersPlus2rows <- NetLogoR::neighbors(world = sim$roadMortMap, agents = unique(bordersPlus[, c(1, 2)]), nNeighbors = 8, torus = FALSE) 
-  sim$roadMortMap <- NLset(world = sim$roadMortMap, agents = unique(bordersPlus2rows[, c(1, 2)]), val = 1)
+  sim$habitatMap <- NLset(world = sim$habitatMap, agents = unique(bordersPlus2rows[, c(1, 2)]), val = 0)
   
   # Territory map
   sim$terrMap <- createWorld(minPxcor = minPxcor(sim$habitatMap),
@@ -205,6 +204,69 @@ initSim <- function(sim) {
   sim$availCellsRas <- world2raster(availCells)
   
   # Lynx population
+  sf2turtles <-  function(turtles_sf) {
+    sfData <- sf::st_drop_geometry(turtles_sf)
+    n <- nrow(turtles_sf)
+    
+    if (!is.na(match("who", names(sfData)))) {
+      who <- sfData$who
+    } else {
+      who <- seq(from = 0, to = n - 1, by = 1)
+    }
+    
+    if (!is.na(match("heading", names(sfData)))) {
+      heading <- sfData$heading
+    } else {
+      heading <- runif(n = n, min = 0, max = 360)
+    }
+    
+    if (!is.na(match("prevX", names(sfData)))) {
+      prevX <- sfData$prevX
+    } else {
+      prevX <- rep(NA, n)
+    }
+    
+    if (!is.na(match("prevY", names(sfData)))) {
+      prevY <- sfData$prevY
+    } else {
+      prevY <- rep(NA, n)
+    }
+    
+    if (!is.na(match("breed", names(sfData)))) {
+      breed <- sfData$breed
+    } else {
+      breed <- rep("turtle", n)
+    }
+    
+    if (!is.na(match("color", names(sfData)))) {
+      color <- sfData$color
+    } else {
+      color <- rainbow(n)
+    }
+    
+    turtles <- new("agentMatrix",
+                   coords = cbind(
+                     xcor = sf::st_coordinates(turtles_sf)[, 1],
+                     ycor = sf::st_coordinates(turtles_sf)[, 2]
+                   ),
+                   who = who,
+                   heading = heading,
+                   prevX = prevX,
+                   prevY = prevY,
+                   breed = breed,
+                   color = color
+    )
+    
+    for (i in which(!names(sfData) %in% c(
+      "who", "heading", "prevX", "prevY",
+      "breed", "color", "stringsAsFactors"
+    ))) {
+      turtles <- turtlesOwn(turtles = turtles, tVar = names(sfData)[i], tVal = sfData[, i])
+    }
+    
+    return(turtles)
+  }
+  
   sim$lynx <- sf2turtles(sim$popInitSpaDES) # input sf object of individual location, ID, pop, sex and age
   # Renaming the 4 populations
   sim$lynx <- NLset(turtles = sim$lynx,
@@ -298,8 +360,7 @@ initSim <- function(sim) {
   sim$nKittyBorn <- list()
   sim$dailyDist <- data.frame(dailyDist = numeric(), year = numeric())
   sim$occHab <- data.frame(occHab = numeric(), year = numeric())
-  
-  
+
   return(invisible(sim))
 }
 
@@ -512,13 +573,40 @@ mortality <- function(sim) {
 
     # Remove individuals from the population
     if(length(deathResRdID) != 0){
-      sim$deadLynxColl[[time(sim, "year")[1]]] <- turtleSet(sim$deadLynxColl[[time(sim, "year")[1]]], turtle(turtles = sim$lynx, who = deathResRdID)) # add the new lynx dead by collisions
+      # Add as the population, the place where they died
+      deadTurtles <- turtle(turtles = sim$lynx, who = deathResRdID)
+      popHere <- of(world = sim$popDist, agents = patchHere(world = sim$popDist, turtles = deadTurtles))
+      popHereName <- rep("Unknown", length(popHere))
+      popHereName[popHere == 1] <-  "Alps"
+      popHereName[popHere == 2] <-  "Jura"
+      popHereName[popHere == 3] <-  "Vosges-Palatinate"
+      popHereName[popHere == 4] <-  "BlackForest"
+      deadTurtles <- NLset(turtles = deadTurtles, agents = deadTurtles, var = "pop", val = popHereName)
+      sim$deadLynxColl[[time(sim, "year")[1]]] <- turtleSet(sim$deadLynxColl[[time(sim, "year")[1]]], deadTurtles) # add the new lynx dead by collisions
     }
     if(length(deathResID) != 0){
-      sim$deadLynxNoColl[[time(sim, "year")[1]]] <- turtleSet(sim$deadLynxNoColl[[time(sim, "year")[1]]], turtle(turtles = sim$lynx, who = deathResID)) # add the new lynx dead other than by collisions
+      # Add as the population, the place where they died
+      deadTurtles <- turtle(turtles = sim$lynx, who = deathResID)
+      popHere <- of(world = sim$popDist, agents = patchHere(world = sim$popDist, turtles = deadTurtles))
+      popHereName <- rep("Unknown", length(popHere))
+      popHereName[popHere == 1] <-  "Alps"
+      popHereName[popHere == 2] <-  "Jura"
+      popHereName[popHere == 3] <-  "Vosges-Palatinate"
+      popHereName[popHere == 4] <-  "BlackForest"
+      deadTurtles <- NLset(turtles = deadTurtles, agents = deadTurtles, var = "pop", val = popHereName)
+      sim$deadLynxNoColl[[time(sim, "year")[1]]] <- turtleSet(sim$deadLynxNoColl[[time(sim, "year")[1]]], deadTurtles) # add the new lynx dead other than by collisions
     }
     if(length(oldLynxID) != 0){
-      sim$deadOldLynx[[time(sim, "year")[1]]] <- turtleSet(sim$deadOldLynx[[time(sim, "year")[1]]], turtle(turtles = sim$lynx, who = oldLynxID)) # add the new lynx dead of old age
+      # Add as the population, the place where they died
+      deadTurtles <- turtle(turtles = sim$lynx, who = oldLynxID)
+      popHere <- of(world = sim$popDist, agents = patchHere(world = sim$popDist, turtles = deadTurtles))
+      popHereName <- rep("Unknown", length(popHere))
+      popHereName[popHere == 1] <-  "Alps"
+      popHereName[popHere == 2] <-  "Jura"
+      popHereName[popHere == 3] <-  "Vosges-Palatinate"
+      popHereName[popHere == 4] <-  "BlackForest"
+      deadTurtles <- NLset(turtles = deadTurtles, agents = deadTurtles, var = "pop", val = popHereName)
+      sim$deadOldLynx[[time(sim, "year")[1]]] <- turtleSet(sim$deadOldLynx[[time(sim, "year")[1]]], deadTurtles) # add the new lynx dead of old age
     }
     
     sim$lynx <- die(turtles = sim$lynx, who = c(deadWhoRes, kittenDieWho))
@@ -848,7 +936,16 @@ dispersal <- function(sim) {
           deathRoad[roadMort == 1] <- 1 # mortality of 1 on the borders (roadMort == 1) needs to be forced
           deadWhoRoad <- dispersingID[deathRoad == 1]
           if(length(deadWhoRoad) != 0){
-            sim$deadLynxColl[[time(sim, "year")[1]]] <- turtleSet(sim$deadLynxColl[[time(sim, "year")[1]]], turtle(turtles = dispersingInd, who = deadWhoRoad)) # add the new lynx dead by collisions
+            # Add as the population, the place where they died
+            deadTurtles <- turtle(turtles = dispersingInd, who = deadWhoRoad)
+            popHere <- of(world = sim$popDist, agents = patchHere(world = sim$popDist, turtles = deadTurtles))
+            popHereName <- rep("Unknown", length(popHere))
+            popHereName[popHere == 1] <-  "Alps"
+            popHereName[popHere == 2] <-  "Jura"
+            popHereName[popHere == 3] <-  "Vosges-Palatinate"
+            popHereName[popHere == 4] <-  "BlackForest"
+            deadTurtles <- NLset(turtles = deadTurtles, agents = deadTurtles, var = "pop", val = popHereName)
+            sim$deadLynxColl[[time(sim, "year")[1]]] <- turtleSet(sim$deadLynxColl[[time(sim, "year")[1]]], deadTurtles) # add the new lynx dead by collisions
           }
           dispersingInd <- die(turtles = dispersingInd, who = deadWhoRoad)
           sim$aliveDispersingIndID <- dispersingInd@.Data[, "who"]
@@ -961,7 +1058,16 @@ dispersal <- function(sim) {
         # These dead individuals should be counted as "dispersers" as they die during their dispersal year
         # However they obtain a resident status so need to change their status
         allDisp <- NLset(turtles = allDisp, agents = turtle(turtles = allDisp, who = deadWhoDaily), var = "status", val = "disp")
-        sim$deadLynxNoColl[[time(sim, "year")[1]]] <- turtleSet(sim$deadLynxNoColl[[time(sim, "year")[1]]], turtle(turtles = allDisp, who = deadWhoDaily)) # add the new lynx dead by other than by collisions
+        # Add as the population, the place where they died
+        deadTurtles <- turtle(turtles = allDisp, who = deadWhoDaily)
+        popHere <- of(world = sim$popDist, agents = patchHere(world = sim$popDist, turtles = deadTurtles))
+        popHereName <- rep("Unknown", length(popHere))
+        popHereName[popHere == 1] <-  "Alps"
+        popHereName[popHere == 2] <-  "Jura"
+        popHereName[popHere == 3] <-  "Vosges-Palatinate"
+        popHereName[popHere == 4] <-  "BlackForest"
+        deadTurtles <- NLset(turtles = deadTurtles, agents = deadTurtles, var = "pop", val = popHereName)
+        sim$deadLynxNoColl[[time(sim, "year")[1]]] <- turtleSet(sim$deadLynxNoColl[[time(sim, "year")[1]]], deadTurtles) # add the new lynx dead by other than by collisions
       }
       sim$lynx <- die(turtles = sim$lynx, who = deadWhoDaily)
       sim$deadDisp[sim$deadDisp$time == floor(time(sim))[1], "nDispDeadDaily"] <- length(deadWhoDaily)
@@ -1054,6 +1160,14 @@ dispersal <- function(sim) {
         
         # Remove individuals from the population
         if(length(deadWhoFormerDisp) != 0){
+          # Add as the population, the place where they died
+          popHere <- of(world = sim$popDist, agents = patchHere(world = sim$popDist, turtles = deadFormerDisp))
+          popHereName <- rep("Unknown", length(popHere))
+          popHereName[popHere == 1] <-  "Alps"
+          popHereName[popHere == 2] <-  "Jura"
+          popHereName[popHere == 3] <-  "Vosges-Palatinate"
+          popHereName[popHere == 4] <-  "BlackForest"
+          deadFormerDisp <- NLset(turtles = deadFormerDisp, agents = deadFormerDisp, var = "pop", val = popHereName)
           sim$deadLynxColl[[time(sim, "year")[1]]] <- turtleSet(sim$deadLynxColl[[time(sim, "year")[1]]], deadFormerDisp) # add the new lynx dead by collisions
           sim$lynx <- die(turtles = sim$lynx, who = deadWhoFormerDisp)
         }
