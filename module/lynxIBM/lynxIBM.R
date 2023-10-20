@@ -46,14 +46,14 @@ defineModule(sim, list(
     defineParameter("corrFactorRes", "numeric", 2.5, NA, NA, "Correction factor for road mortality risk for residents - Parameter calibrated with simulations"),
     defineParameter("corrFactorDisp", "numeric", 175, NA, NA, "Correction factor for road mortality risk for dispersers - Parameter calibrated with simulations"),
     defineParameter("nMatMax", "numeric", 10, NA, NA, "Maximum number of consecutive steps within which the individual needs to find dispsersal habitat"),
-    defineParameter("coreTerrSizeFAlps", "numeric", 97, NA, NA, "Core size for a female territory (km2) in the Alps"),
-    defineParameter("coreTerrSizeFJura", "numeric", 126, NA, NA, "Core size for a female territory (km2) in the Jura"),
-    defineParameter("coreTerrSizeFVosgesPalatinate", "numeric", 126, NA, NA, "Core size for a female territory (km2) in the Vosges-Palatinate"),
-    defineParameter("coreTerrSizeFBlackForest", "numeric", 126, NA, NA, "Core size for a female territory (km2) in the Black Forest"),
-    defineParameter("terrSizeMAlps", "numeric", 159, NA, NA, "Territory size for a male (km2) in the Alps"),
-    defineParameter("terrSizeMJura", "numeric", 270, NA, NA, "Territory size for a male (km2) in the Jura"),
-    defineParameter("terrSizeMVosgesPalatinate", "numeric", 270, NA, NA, "Territory size for a male (km2) in the Vosges-Palatinate"),
-    defineParameter("terrSizeMBlackForest", "numeric", 270, NA, NA, "Territory size for a male (km2) in the Black Forest"),
+    defineParameter("coreTerrSizeFAlps", "numeric", 76, NA, NA, "Core size for a female territory (km2) in the Alps"),
+    defineParameter("coreTerrSizeFJura", "numeric", 119, NA, NA, "Core size for a female territory (km2) in the Jura"),
+    defineParameter("coreTerrSizeFVosgesPalatinate", "numeric", 119, NA, NA, "Core size for a female territory (km2) in the Vosges-Palatinate"),
+    defineParameter("coreTerrSizeFBlackForest", "numeric", 119, NA, NA, "Core size for a female territory (km2) in the Black Forest"),
+    defineParameter("terrSizeMAlps", "numeric", 137, NA, NA, "Territory size for a male (km2) in the Alps"),
+    defineParameter("terrSizeMJura", "numeric", 226, NA, NA, "Territory size for a male (km2) in the Jura"),
+    defineParameter("terrSizeMVosgesPalatinate", "numeric", 226, NA, NA, "Territory size for a male (km2) in the Vosges-Palatinate"),
+    defineParameter("terrSizeMBlackForest", "numeric", 226, NA, NA, "Territory size for a male (km2) in the Black Forest"),
     defineParameter("testON", "logical", TRUE, NA, NA, "Run the tests")
   ),
   inputObjects = bind_rows(
@@ -1354,7 +1354,7 @@ searchTerritory <- function(sim) {
         terrSize[which(terrSizeName == 3)] <- round(P(sim)$coreTerrSizeFVosgesPalatinate)
         terrSize[which(terrSizeName == 4)] <- round(P(sim)$coreTerrSizeFBlackForest)
 
-        terrDT <- spread(landscape = availCellsUpdatedRas, directions = 4,
+        terrDT <- spread(landscape = availCellsUpdatedRas, directions = 8,
                          loci = cellFromPxcorPycor(world = sim$habitatMap,
                                                    pxcor = searchingFemCell[, 1],
                                                    pycor = searchingFemCell[, 2]),
