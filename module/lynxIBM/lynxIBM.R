@@ -30,21 +30,21 @@ defineModule(sim, list(
     defineParameter("pKittyOldF", "numeric", c(0.5, 0.5), NA, NA, "Probabilities for old females to have nKittyOldF"),
     defineParameter("minAgeReproF", "numeric", 2, NA, NA, "Age minimum for females to reproduce"),
     defineParameter("minAgeReproM", "numeric", 3, NA, NA, "Age minimum for males to reproduce"),
-    defineParameter("pMortResAlps", "numeric", 0.17, NA, NA, "Fixed annual probability of mortality for residents in the Alps - Parameter calibrated with simulations"),
-    defineParameter("pMortResJura", "numeric", 0.1, NA, NA, "Fixed annual probability of mortality for residents in the Jura - Parameter calibrated with simulations"),
-    defineParameter("pMortResVosgesPalatinate", "numeric", 0.1, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate - Parameter calibrated with simulations"),
-    defineParameter("pMortResBlackForest", "numeric", 0.1, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest - Parameter calibrated with simulations"),
+    defineParameter("pMortResAlps", "numeric", 0.15, NA, NA, "Fixed annual probability of mortality for residents in the Alps - Parameter calibrated with simulations"),
+    defineParameter("pMortResJura", "numeric", 0.15, NA, NA, "Fixed annual probability of mortality for residents in the Jura - Parameter calibrated with simulations"),
+    defineParameter("pMortResVosgesPalatinate", "numeric", 0.15, NA, NA, "Fixed annual probability of mortality for residents in the Vosges-Palatinate - Parameter calibrated with simulations"),
+    defineParameter("pMortResBlackForest", "numeric", 0.15, NA, NA, "Fixed annual probability of mortality for residents in the Black Forest - Parameter calibrated with simulations"),
     defineParameter("ageMax", "numeric", 20, NA, NA, "Age maximum individuals can be"),
     defineParameter("xPs", "numeric", 11, NA, NA, "Exponent of power function to define the daily step distribution"),
     defineParameter("sMaxPs", "numeric", 45, NA, NA, "Maximum number of intraday movement steps"),
     defineParameter("pMat", "numeric", 0.03, NA, NA, "Probability of stepping into matrix cells"),
     defineParameter("pCorr", "numeric", 0.5, NA, NA, "Movement correlation probability"),
-    defineParameter("pMortDispAlps", "numeric", 0.0005, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps - Parameter calibrated with simulations"),
-    defineParameter("pMortDispJura", "numeric", 0.001, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura - Parameter calibrated with simulations"),
-    defineParameter("pMortDispVosgesPalatinate", "numeric", 0.001, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate - Parameter calibrated with simulations"),
-    defineParameter("pMortDispBlackForest", "numeric", 0.001, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest - Parameter calibrated with simulations"),
-    defineParameter("corrFactorRes", "numeric", 2.5, NA, NA, "Correction factor for road mortality risk for residents - Parameter calibrated with simulations"),
-    defineParameter("corrFactorDisp", "numeric", 175, NA, NA, "Correction factor for road mortality risk for dispersers - Parameter calibrated with simulations"),
+    defineParameter("pMortDispAlps", "numeric", 7e-04, NA, NA, "Fixed daily probability of mortality for dispersers in the Alps - Parameter calibrated with simulations"),
+    defineParameter("pMortDispJura", "numeric", 9e-04, NA, NA, "Fixed daily probability of mortality for dispersers in the Jura - Parameter calibrated with simulations"),
+    defineParameter("pMortDispVosgesPalatinate", "numeric", 9e-04, NA, NA, "Fixed daily probability of mortality for dispersers in the Vosges-Palatinate - Parameter calibrated with simulations"),
+    defineParameter("pMortDispBlackForest", "numeric", 9e-04, NA, NA, "Fixed daily probability of mortality for dispersers in the Black Forest - Parameter calibrated with simulations"),
+    defineParameter("corrFactorRes", "numeric", 3.9, NA, NA, "Correction factor for road mortality risk for residents - Parameter calibrated with simulations"),
+    defineParameter("corrFactorDisp", "numeric", 170, NA, NA, "Correction factor for road mortality risk for dispersers - Parameter calibrated with simulations"),
     defineParameter("nMatMax", "numeric", 10, NA, NA, "Maximum number of consecutive steps within which the individual needs to find dispsersal habitat"),
     defineParameter("coreTerrSizeFAlps", "numeric", 76, NA, NA, "Core size for a female territory (km2) in the Alps"),
     defineParameter("coreTerrSizeFJura", "numeric", 119, NA, NA, "Core size for a female territory (km2) in the Jura"),
@@ -147,7 +147,7 @@ initSim <- function(sim) {
                                 maxPxcor = NCOL(habitatRaster),
                                 minPycor = 1,
                                 maxPycor = NROW(habitatRaster),
-                                data = values(habitatRaster, mat = FALSE))
+                                data = values(habitatRaster))
 
   # Road mortality map as a worldMatrix
   roadMortRaster <- sim$collProbSpaDES # input raster of the collision probabilities
@@ -156,7 +156,7 @@ initSim <- function(sim) {
                                  maxPxcor = NCOL(roadMortRaster),
                                  minPycor = 1,
                                  maxPycor = NROW(roadMortRaster),
-                                 data = values(roadMortRaster, mat = FALSE))
+                                 data = values(roadMortRaster))
   
   # Distribution of the population as a worldMatrix
   # Alps = 1
@@ -168,7 +168,7 @@ initSim <- function(sim) {
                              maxPxcor = NCOL(populationDist),
                              minPycor = 1,
                              maxPycor = NROW(populationDist),
-                             data = values(populationDist, mat = FALSE))
+                             data = values(populationDist))
   
   # Individuals going out of the landscape "bounce" so that we don't interfer on mortality probabilities
   # The habitat quality on landscape borders needs to be = 0 (barriers)
@@ -204,69 +204,6 @@ initSim <- function(sim) {
   sim$availCellsRas <- world2raster(availCells)
   
   # Lynx population
-  sf2turtles <-  function(turtles_sf) {
-    sfData <- sf::st_drop_geometry(turtles_sf)
-    n <- nrow(turtles_sf)
-    
-    if (!is.na(match("who", names(sfData)))) {
-      who <- sfData$who
-    } else {
-      who <- seq(from = 0, to = n - 1, by = 1)
-    }
-    
-    if (!is.na(match("heading", names(sfData)))) {
-      heading <- sfData$heading
-    } else {
-      heading <- runif(n = n, min = 0, max = 360)
-    }
-    
-    if (!is.na(match("prevX", names(sfData)))) {
-      prevX <- sfData$prevX
-    } else {
-      prevX <- rep(NA, n)
-    }
-    
-    if (!is.na(match("prevY", names(sfData)))) {
-      prevY <- sfData$prevY
-    } else {
-      prevY <- rep(NA, n)
-    }
-    
-    if (!is.na(match("breed", names(sfData)))) {
-      breed <- sfData$breed
-    } else {
-      breed <- rep("turtle", n)
-    }
-    
-    if (!is.na(match("color", names(sfData)))) {
-      color <- sfData$color
-    } else {
-      color <- rainbow(n)
-    }
-    
-    turtles <- new("agentMatrix",
-                   coords = cbind(
-                     xcor = sf::st_coordinates(turtles_sf)[, 1],
-                     ycor = sf::st_coordinates(turtles_sf)[, 2]
-                   ),
-                   who = who,
-                   heading = heading,
-                   prevX = prevX,
-                   prevY = prevY,
-                   breed = breed,
-                   color = color
-    )
-    
-    for (i in which(!names(sfData) %in% c(
-      "who", "heading", "prevX", "prevY",
-      "breed", "color", "stringsAsFactors"
-    ))) {
-      turtles <- turtlesOwn(turtles = turtles, tVar = names(sfData)[i], tVal = sfData[, i])
-    }
-    
-    return(turtles)
-  }
-  
   sim$lynx <- sf2turtles(sim$popInitSpaDES) # input sf object of individual location, ID, pop, sex and age
   # Renaming the 4 populations
   sim$lynx <- NLset(turtles = sim$lynx,
@@ -299,7 +236,7 @@ initSim <- function(sim) {
     if(class(distGoodHab) == "matrix"){ # more than 1 individual = several patches = matrix
       closestDist <- apply(distGoodHab, 1, FUN = which.min)
       closestPatch <- allGoodHab[closestDist, , drop = FALSE] # find for each individual the closest patch of breeding or dispersing habitat
-    } else{ # 1 indivivual = one patch = numerical vector
+    } else{ # 1 individual = one patch = numerical vector
       closestPatch <- allGoodHab[which.min(distGoodHab), , drop = FALSE]
     }
     patchLynxGood <- patchLynx
@@ -345,18 +282,18 @@ initSim <- function(sim) {
   sim$outputTerrMap[[1]] <- sim$terrMap
   sim$connectivityMap <- NLset(world = sim$habitatMap, agents = NetLogoR::patches(sim$habitatMap), val = 0)
   sim$nColl <- data.frame(ncoll = numeric(), time = numeric())
-  sim$bornLynx <- rep(list(turtle(sim$lynx, who = -1)), times(sim)$end[1]) # born individuals each year
-  sim$parentsRepro <- rep(list(turtle(sim$lynx, who = -1)), times(sim)$end[1]) # reproducing parents each year
-  sim$deadLynxColl <- rep(list(turtle(sim$lynx, who = -1)), times(sim)$end[1]) # dead lynx by collisions each year
-  sim$deadLynxNoColl <- rep(list(turtle(sim$lynx, who = -1)), times(sim)$end[1]) # dead lynx other than by collision each year
-  sim$deadOldLynx <- rep(list(turtle(sim$lynx, who = -1)), times(sim)$end[1]) # dead lynx because of old age each year
-  sim$resLynx <- rep(list(turtle(sim$lynx, who = -1)), times(sim)$end[1]) # individuals becoming resident each year
+  sim$bornLynx <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # born individuals each year
+  sim$parentsRepro <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # reproducing parents each year
+  sim$deadLynxColl <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # dead lynx by collisions each year
+  sim$deadLynxNoColl <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # dead lynx other than by collision each year
+  sim$deadOldLynx <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # dead lynx because of old age each year
+  sim$resLynx <- rep(list(sim$lynx[0, ]), times(sim)$end[1]) # individuals becoming resident each year
   sim$timRes <- data.frame(who = numeric(), year = numeric(), time = numeric()) # at which time individuals became resident
   sim$deadDisp <- data.frame(nDisp = numeric(), nDispDeadColl = numeric(), nDispDeadDaily = numeric(), time = numeric()) # how many lynx died during dispersal
   # Individuals that will disperse the following year
   sim$dispOfTheYear <- NLwith(agents = sim$lynx, var = "status", val = "disp")
   # Females that can reproduce 
-  sim$FemRes <- rep(list(turtle(sim$lynx, who = -1)), times(sim)$end[1])
+  sim$FemRes <- rep(list(sim$lynx[0, ]), times(sim)$end[1])
   sim$nKittyBorn <- list()
   sim$dailyDist <- data.frame(dailyDist = numeric(), year = numeric())
   sim$occHab <- data.frame(occHab = numeric(), year = numeric())
@@ -407,13 +344,24 @@ reproduction <- function(sim) {
     
     if(sum(nKittyBorn) != 0){
       
+      # Be sure to not give "who" number to kitten of lynx that already existed (but died)
+      # Otherwise it causes problems in the model outputs
+      # Find the maximum "who"
+      whoAllLynx <- c(of(agents = sim$lynx, var = "who"), 
+                      unlist(lapply(sim$deadLynxColl, FUN = function(x){of(agents = x, var = "who")})),
+                      unlist(lapply(sim$deadLynxNoColl, FUN = function(x){of(agents = x, var = "who")})),
+                      unlist(lapply(sim$deadOldLynx, FUN = function(x){of(agents = x, var = "who")})))
+      maxWhoAllLynx <- unique(max(whoAllLynx, na.rm = TRUE))
+      newWho <- seq(from = maxWhoAllLynx + 1, to = maxWhoAllLynx + sum(nKittyBorn), by = 1)
       # Create the kitten
       sim$lynx <- hatch(turtles = sim$lynx, who = momsID, n = nKittyBorn, breed = "kitty")
       # Update the kitten variables
       kitten <- NLwith(agents = sim$lynx, var = "breed", val = "kitty")
       sexKitten <- sample(c("F", "M"), size = NLcount(kitten), replace = TRUE)
       colorKitten <- randomColor(count = NLcount(kitten), hue = "random", luminosity = "random")
-      kittenVar <- cbind.data.frame(prevX = NA,
+
+      kittenVar <- cbind.data.frame(who = newWho,
+                                    prevX = NA,
                                     prevY = NA,
                                     breed = "turtle",
                                     color = colorKitten,
@@ -428,18 +376,19 @@ reproduction <- function(sim) {
                                     nFem = 0,
                                     rdMortTerr = 0)
       sim$lynx <- NLset(turtles = sim$lynx, agents = kitten, var = colnames(kittenVar), val = kittenVar)
+
       # Assign the population name of the newborns where there are
-      popHere <- of(world = sim$popDist, agents = patchHere(world = sim$popDist, turtles = kitten))
+      popHere <- of(world = sim$popDist, agents = patchHere(world = sim$popDist, turtles = NLwith(agents = sim$lynx, var = "who", val = newWho)))
       popHereName <- rep("Unknown", length(popHere))
       popHereName[popHere == 1] <-  "Alps"
       popHereName[popHere == 2] <-  "Jura"
       popHereName[popHere == 3] <-  "Vosges-Palatinate"
       popHereName[popHere == 4] <-  "BlackForest"
-      sim$lynx <- NLset(turtles = sim$lynx, agents = kitten, var = "pop", val = popHereName)
-      sim$bornLynx[[time(sim, "year")[1]]] <- turtle(turtles = sim$lynx, who = of(agents = kitten, var = "who")) # newborns of the year
+      sim$lynx <- NLset(turtles = sim$lynx, agents = NLwith(agents = sim$lynx, var = "who", val = newWho), var = "pop", val = popHereName)
+      sim$bornLynx[[time(sim, "year")[1]]] <- turtle(turtles = sim$lynx, who = newWho) # newborns of the year
       sim$parentsRepro[[time(sim, "year")[1]]] <- turtle(turtles = sim$lynx,
                                                          who = unique(c(momsID, of(agents = turtle(turtles = sim$lynx, who = momsID), var = "maleID")))) # reproducing individuals of the year
-      
+
       # Test
       if(P(sim)$testON == TRUE) {
         expect_equivalent(NpopBeforeRepro + NLcount(kitten), NLcount(sim$lynx))
@@ -838,8 +787,7 @@ dispersal <- function(sim) {
               chosenCells <- as.data.frame(chosenCells)
               chosenCells[chosenCells[, "cellType"] == 2, c("pxcor", "pycor")][
                 dispersingIndMatnSteps + 1 == P(sim)$nMatMax, ] <- dispersingIndMat[
-                  dispersingIndMatnSteps + 1 == P(sim)$nMatMax, , drop = FALSE]@.Data[, c("lastDispX", "lastDispY"), drop = FALSE]
-              
+                  dispersingIndMatnSteps + 1 == P(sim)$nMatMax]@.Data[, c("lastDispX", "lastDispY")]              
               # Test
               if(P(sim)$testON == TRUE) {
                 expect_equivalent(of(agents = NLwith(agents = dispersingInd, var = "nMat", val = P(sim)$nMatMax),
@@ -847,8 +795,8 @@ dispersal <- function(sim) {
                                   of(agents = dispersingIndMat, var = "who")[dispersingIndMatnSteps + 1 == P(sim)$nMatMax])
                 expect_equivalent(of(agents = NLwith(agents = dispersingInd, var = "nMat", val = P(sim)$nMatMax),
                                      var = c("lastDispX", "lastDispY")),
-                                  dispersingIndMat[dispersingIndMatnSteps + 1 == P(sim)$nMatMax, , drop = FALSE]@.Data[
-                                    , c("lastDispX", "lastDispY"), drop = FALSE])
+                                  dispersingIndMat[dispersingIndMatnSteps + 1 == P(sim)$nMatMax]@.Data[
+                                    , c("lastDispX", "lastDispY")])
               }
               
               # Reset nMat

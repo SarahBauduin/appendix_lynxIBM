@@ -7,7 +7,6 @@ output: pdf_document
 library(igraph)
 library(SpaDES.core)
 library(terra)
-library(sf)
 
 # Where is located your appendix_lynxIBM repo
 pathRepo <- "C:/Users/sarah.bauduin/Documents/GitHub/" # change to your path
@@ -54,7 +53,7 @@ lynxIBMinit <- simInit(times = times, params = list(lynxIBM = parameters), modul
 lynxIBMrun <- spades(lynxIBMinit, debug = TRUE)
 
 # Save the simulation output
-save(mySimOut, file = paste0(pathRepo, "appendix_lynxIBM/module/outputs/lynxIBMrun_", sample(1:100000,1), ".RData"))
+save(lynxIBMrun, file = paste0(pathRepo, "appendix_lynxIBM/module/outputs/lynxIBMrun_", sample(1:100000,1), ".RData"))
 
 ```
 
