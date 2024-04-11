@@ -1,0 +1,23 @@
+Values to match with their 95% intervals
+From litterature
+
+# Mortality in the Alps
+rAllRes_Alps = 0.24 [0.08 ; 0.57]
+rAllDisp_Alps = 0.24 [0.15 ; 0.38]
+rCollRes_Alps = 0.02 [0 ; 0.059]
+rCollDisp_Alps = 0.077 [0 ; 0.211]
+nCollAlps = 2 [0 ; 3]
+
+# Mortality in the Jura
+rAllRes_Jura = 0.17 [0.1 ; 0.29]
+rAllDisp_Jura = 0.35 [0.16 ; 0.65]
+rCollRes_Jura = 0.034 [0 ; 0.08]
+rCollDisp_Jura = 0.067 [0 ; 0.185]
+nCollJura = 6 [3 ; 9]
+
+# Reproduction
+rRepro = 0.81
+
+# Dispersal distances
+distDispAlps = 26 [15 ; 36]
+distDispJura = 63 [39 ; 87]
