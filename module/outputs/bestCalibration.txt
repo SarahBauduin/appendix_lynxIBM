@@ -1,0 +1,18 @@
+# Resident mortalities
+pMortResAlps <- 0.15
+pMortResJura <- 0.15
+pMortResVosgesPalatinate <- pMortResJura
+pMortResBlackForest <- pMortResJura
+
+# Disperser mortalities
+pMortDispAlps <- 7e-04,
+pMortDispJura <- 9e-04
+pMortDispVosgesPalatinate <- pMortDispJura
+pMortDispBlackForest <- pMortDispJura
+
+# Reproduction
+pRepro <- 0.95,
+
+# Correction factors for collision probabilities
+corrFactorRes <- 3.9
+corrFactorDisp <- 170
