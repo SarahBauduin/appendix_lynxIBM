@@ -233,7 +233,7 @@ initSim <- function(sim) {
     allGoodHab <- NLwith(world = sim$habitatMap, agents = NetLogoR::patches(sim$habitatMap), val = c(3, 4)) # find the dispersing and breeding habitats
     distGoodHab <- NLdist(agents = patchLynx[habHereLynx %in% c(0, 2), , drop = FALSE], agents2 = allGoodHab,
                           world = sim$habitatMap, torus = FALSE, allPairs = TRUE)
-    if(class(distGoodHab) == "matrix"){ # more than 1 individual = several patches = matrix
+    if(nrow(distGoodHab) != 1){ # more than 1 individual = several patches = matrix
       closestDist <- apply(distGoodHab, 1, FUN = which.min)
       closestPatch <- allGoodHab[closestDist, , drop = FALSE] # find for each individual the closest patch of breeding or dispersing habitat
     } else{ # 1 individual = one patch = numerical vector
