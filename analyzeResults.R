@@ -8,13 +8,16 @@ library(mapview)
 library(viridis)
 library(wesanderson)
 library(rgeos)
+library(terra)
+library(dplyr)
+library(sf)
 
 #############################
 ## Analyze the simulations ##
 #############################
 # Read all simulated files
 pathFiles <- "appendix_lynxIBM/module/outputs"
-listSim <- list.files(pathFiles)[2:201] # remove the first file (cache)
+listSim <- list.files(pathFiles)[3:102] # remove the first two files (cache and bestCalibration)
 nSim <- length(listSim)
 lastYear <- 50
 
@@ -30,92 +33,177 @@ gg_color <- function(n) {
 ## MODEL CALIBRATION ##
 #######################
 
-###############################
-## Resulting mortality rates ##
-###############################
+calibrIBM <- data.frame(## Reference values
+                        # Mortality Alps
+                        mean_rAllRes_Alps_ref = 0.24, CI_inf_rAllRes_Alps_ref = 0.08, CI_sup_rAllRes_Alps_ref = 0.57,
+                        mean_rAllDisp_Alps_ref = 0.24, CI_inf_rAllDisp_Alps_ref = 0.15, CI_sup_rAllDisp_Alps_ref = 0.38,
+                        mean_rCollRes_Alps_ref = 0.02, CI_inf_rCollRes_Alps_ref = 0, CI_sup_rCollRes_Alps_ref = 0.059,
+                        mean_rCollDisp_Alps_ref = 0.077, CI_inf_rCollDisp_Alps_ref = 0, CI_sup_rCollDisp_Alps_ref = 0.211,
+                        mean_nCollAlps_ref = 2, CI_inf_nCollAlps_ref = 0, CI_sup_nCollAlps_ref = 3,
+                        # Mortality Jura
+                        mean_rAllRes_Jura_ref = 0.17, CI_inf_rAllRes_Jura_ref = 0.1, CI_sup_rAllRes_Jura_ref = 0.29,
+                        mean_rAllDisp_Jura_ref = 0.35, CI_inf_rAllDisp_Jura_ref = 0.16, CI_sup_rAllDisp_Jura_ref = 0.65,
+                        mean_rCollRes_Jura_ref = 0.034, CI_inf_rCollRes_Jura_ref = 0, CI_sup_rCollRes_Jura_ref = 0.08,
+                        mean_rCollDisp_Jura_ref = 0.067, CI_inf_rCollDisp_Jura_ref = 0, CI_sup_rCollDisp_Jura_ref = 0.185,
+                        mean_nCollJura_ref = 6, CI_inf_nCollJura_ref = 3, CI_sup_nCollJura_ref = 9,
+                        # Reproducion
+                        rRepro_ref = 0.81,
+                        # Dispersal distance
+                        mean_distDispAlps_ref = 26, CI_inf_distDispAlps_ref = 15, CI_sup_distDispAlps_ref = 36,
+                        mean_distDispJura_ref = 63, CI_inf_distDispJura_ref = 39, CI_sup_distDispJura_ref = 87,
+                        
+                        ## Simulated results
+                        # Mortality Alps
+                        mean_rAllRes_Alps = NA, CI_inf_rAllRes_Alps = NA, CI_sup_rAllRes_Alps = NA,
+                        mean_rAllDisp_Alps = NA, CI_inf_rAllDisp_Alps = NA, CI_sup_rAllDisp_Alps = NA,
+                        mean_rCollRes_Alps = NA, CI_inf_rCollRes_Alps = NA, CI_sup_rCollRes_Alps = NA,
+                        mean_rCollDisp_Alps = NA, CI_inf_rCollDisp_Alps = NA, CI_sup_rCollDisp_Alps = NA,
+                        mean_nCollAlps = NA, CI_inf_nCollAlps = NA, CI_sup_nCollAlps = NA,
+                        # Mortality Jura
+                        mean_rAllRes_Jura = NA, CI_inf_rAllRes_Jura = NA, CI_sup_rAllRes_Jura = NA,
+                        mean_rAllDisp_Jura = NA, CI_inf_rAllDisp_Jura = NA, CI_sup_rAllDisp_Jura = NA,
+                        mean_rCollRes_Jura = NA, CI_inf_rCollRes_Jura = NA, CI_sup_rCollRes_Jura = NA,
+                        mean_rCollDisp_Jura = NA, CI_inf_rCollDisp_Jura = NA, CI_sup_rCollDisp_Jura = NA,
+                        mean_nCollJura = NA, CI_inf_nCollJura = NA, CI_sup_nCollJura = NA,
+                        # Reproducion
+                        mean_rRepro = NA, CI_inf_rRepro = NA, CI_sup_rRepro = NA,
+                        # Dispersal distance
+                        mean_distDispAlps = NA, CI_inf_distDispAlps = NA, CI_sup_distDispAlps = NA,
+                        mean_distDispJura = NA, CI_inf_distDispJura = NA, CI_sup_distDispJura = NA
+)
+habMapSpaDES <- rast("C:/Users/sarah.bauduin/Documents/GitHub/appendix_lynxIBM/module/inputs/habMap.tif")
 
-rCollAll <- c()
-rCollRes <- c()
-rCollDisp <- c()
-rNoCollAll <- c()
-rNoCollRes <- c()
-rNoCollDisp <- c()
+# Mortality
+rAllRes_Alps = numeric() 
+rAllDisp_Alps = numeric()
+rCollRes_Alps = numeric()
+rCollDisp_Alps = numeric()
+nCollAlps = numeric()
+# Mortality Jura
+rAllRes_Jura = numeric()
+rAllDisp_Jura = numeric()
+rCollRes_Jura = numeric()
+rCollDisp_Jura = numeric()
+nCollJura = numeric()
+# Reproduction
+pRepro = numeric()
+# Dispersal distance
+distDispAlps = numeric()
+distDispJura = numeric()
 
-for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
+for(file in 1:length(listSim)){
+  load(paste0(pathFiles, "/", listSim[file]))
   
-  # Realized mortality rates for residents and dispersers by collision or otherwise
-  # Starts at year 10 (before = burn-in)
-  deathLynx <- cbind(repSim = rep(1:nSim, each = lastYear-9), year = rep(10:lastYear, nSim),
-                     nCollAll = rep(0, (lastYear-9)*nSim), nCollRes = rep(0, (lastYear-9)*nSim), nCollDisp = rep(0, (lastYear-9)*nSim),
-                     nNoCollAll = rep(0, (lastYear-9)*nSim), nNoCollRes = rep(0, (lastYear-9)*nSim), nNoCollDisp = rep(0, (lastYear-9)*nSim),
-                     nAll = rep(0, (lastYear-9)*nSim), nRes = rep(0, (lastYear-9)*nSim), nDisp = rep(0, (lastYear-9)*nSim), 
-                     rCollAll = rep(0, (lastYear-9)*nSim), rCollRes = rep(0, (lastYear-9)*nSim), rCollDisp = rep(0, (lastYear-9)*nSim), 
-                     rNoCollAll = rep(0, (lastYear-9)*nSim), rNoCollRes = rep(0, (lastYear-9)*nSim), rNoCollDisp = rep(0, (lastYear-9)*nSim))
+  ############
+  ## Mortality
   
-  for(i in 1:length(listSim)){ # for each simulation run
-    load(paste0(pathFiles, "/", listSim[i]))
+  for(y in 3:(lastYear)){
     
-    for(y in 10:(lastYear)){
-      
-      if(NLcount(lynxIBMrun$deadLynxColl[[y]]) == 0){
-        deadLynxColl <- noTurtles()
-      } else {
-        deadLynxColl <- NLwith(agents = lynxIBMrun$deadLynxColl[[y]], var = "pop", val = popName)
-      }
-      if(NLcount(lynxIBMrun$deadLynxNoColl[[y]] & NLcount(lynxIBMrun$deadOldLynx[[y]])) == 0){ # add the old lynx
-        deadLynxNoColl <- noTurtles()
-      } else {
-        deadLynxNoColl <- NLwith(agents = turtleSet(lynxIBMrun$deadLynxNoColl[[y]], lynxIBMrun$deadOldLynx[[y]]), var = "pop", val = popName)
-      }
+    # The population in which lynx died is updated once they died
+    if(NLcount(lynxIBMrun$deadLynxColl[[y]]) == 0){
+      deadLynxColl <- noTurtles()
+    } else {
+      deadLynxColl <- lynxIBMrun$deadLynxColl[[y]]
+    }
+    if(NLcount(lynxIBMrun$deadLynxNoColl[[y]] & NLcount(lynxIBMrun$deadOldLynx[[y]])) == 0){ # add the old lynx
+      deadLynxNoColl <- noTurtles()
+    } else {
+      deadLynxNoColl <- turtleSet(lynxIBMrun$deadLynxNoColl[[y]], lynxIBMrun$deadOldLynx[[y]])
+    }
+    # However, the population in which lynx are at the beginning of the time step is not updated
+    # Their "pop" is the population in which they are born
+    # Need to assign Alps and Jura population based on the lynx current location
+    # Also some lynx were in a population at the beginning of the time step and they died in another population
+    # To avoid case where this happen, we need to update the population for those to be part, at the beginning
+    # of the time step, in the population where they died so that individuals dead are in the fraction,
+    # same as for their status (for example, if a lynx started the year as a disperser but died as a resident,
+    # it needs to be counted as a resident at the beginning of the time step)
+    whoDead <-  c(of(agents = deadLynxColl, var = "who"), of(agents = deadLynxNoColl, var = "who"))
+    allDead <- turtleSet(deadLynxNoColl, deadLynxColl)
+    if(NLcount(allDead) != 0){
+      allDeadInfo <- of(agents = allDead, var = c("who", "status", "pop"))
+      allDeadInfo <- allDeadInfo[order(allDeadInfo$who),]
       if(NLcount(lynxIBMrun$outputLynx[[y]]) == 0){
         outputLynx <- noTurtles()
       } else {
-        outputLynx <- NLwith(agents = lynxIBMrun$outputLynx[[y]], var = "pop", val = popName)
+        outputLynx <- lynxIBMrun$outputLynx[[y]]
+        # Update their location
+        popHere <- of(world = lynxIBMrun$popDist, agents = patchHere(world = lynxIBMrun$popDist, turtles = outputLynx))
+        popHereName <- rep("Unknown", length(popHere))
+        popHereName[popHere == 1] <-  "Alps"
+        popHereName[popHere == 2] <-  "Jura"
+        popHereName[popHere == 3] <-  "Vosges-Palatinate"
+        popHereName[popHere == 4] <-  "BlackForest"
+        outputLynx <- NLset(turtles = outputLynx, agents = outputLynx, var = "pop", val = popHereName)
+        # Update the dead ones in the outputLynx
+        outputLynx <- NLset(turtles = outputLynx, agents = NLwith(agents = outputLynx, var = "who", val = whoDead),
+                            var = "status", val = allDeadInfo$status)
+        outputLynx <- NLset(turtles = outputLynx, agents = NLwith(agents = outputLynx, var = "who", val = whoDead),
+                            var = "pop", val = allDeadInfo$pop)
+      }
+    } else {
+      if(NLcount(lynxIBMrun$outputLynx[[y]]) == 0){
+        outputLynx <- noTurtles()
+      } else {
+        outputLynx <- lynxIBMrun$outputLynx[[y]]
+        # Update their location
+        popHere <- of(world = lynxIBMrun$popDist, agents = patchHere(world = lynxIBMrun$popDist, turtles = outputLynx))
+        popHereName <- rep("Unknown", length(popHere))
+        popHereName[popHere == 1] <-  "Alps"
+        popHereName[popHere == 2] <-  "Jura"
+        popHereName[popHere == 3] <-  "Vosges-Palatinate"
+        popHereName[popHere == 4] <-  "BlackForest"
+        outputLynx <- NLset(turtles = outputLynx, agents = outputLynx, var = "pop", val = popHereName)
+      }
+    }
+    
+    for(popName in c("Alps", "Jura")){
+      
+      # The population in which lynx died is updated once they died
+      if(NLcount(deadLynxColl) != 0){
+        deadLynxCollPop <- NLwith(agents = deadLynxColl, var = "pop", val = popName)
+      } else {
+        deadLynxCollPop <- noTurtles()
+      }
+      if(NLcount(deadLynxNoColl) != 0){ 
+        deadLynxNoCollPop <- NLwith(agents = deadLynxNoColl, var = "pop", val = popName)
+      } else {
+        deadLynxNoCollPop <- noTurtles()
+      }
+      if(NLcount(outputLynx) != 0){
+        outputLynxPop <- NLwith(agents = outputLynx, var = "pop", val = popName)
+      } else {
+        outputLynxPop <- noTurtles()
       }
       
       # Collisions - All
-      nCollAll <- NLcount(agents = deadLynxColl)
-
+      nCollAll <- NLcount(agents = deadLynxCollPop)
       
-      # Deaths other than by collisions - All
-      nNoCollAll <- NLcount(agents = deadLynxNoColl)
-
-      
-      # Collisions - Residents
-      if(NLcount(deadLynxColl) == 0){
+      # Collisions
+      if(NLcount(deadLynxCollPop) == 0){
         nCollRes <- 0
-      } else {
-        nCollRes <- NLcount(agents = NLwith(agents = deadLynxColl, var = "status", val = "res"))
-      }
-      
-      # Deaths other than by collisions - Residents
-      if(NLcount(deadLynxNoColl) == 0){
-        nNoCollRes <- 0
-      } else {
-        nNoCollRes <- NLcount(agents = NLwith(agents = deadLynxNoColl, var = "status", val = "res"))
-      }
-      
-      # Collisions - Dispersers
-      if(NLcount(deadLynxColl) == 0){
         nCollDisp <- 0
       } else {
-        nCollDisp <- NLcount(agents = NLwith(agents = deadLynxColl, var = "status", val = "disp"))
+        nCollRes <- NLcount(agents = NLwith(agents = deadLynxCollPop, var = "status", val = "res"))
+        nCollDisp <- NLcount(agents = NLwith(agents = deadLynxCollPop, var = "status", val = "disp"))
       }
       
-      # Deaths other than by collisions - Dispersers
-      if(NLcount(deadLynxNoColl) == 0){
-        nNoCollDisp <- 0
+      # Total deaths
+      allDead <- turtleSet(deadLynxNoCollPop, deadLynxCollPop)
+      if(NLcount(allDead) == 0){
+        nDeadRes <- 0
+        nDeadDisp <- 0
       } else {
-        nNoCollDisp <- NLcount(agents = NLwith(agents = deadLynxNoColl, var = "status", val = "disp"))
+        nDeadRes <- NLcount(agents = NLwith(agents = allDead, var = "status", val = "res"))
+        nDeadDisp <- NLcount(agents = NLwith(agents = allDead, var = "status", val = "disp"))
       }
-      
       
       # Number of individuals at the beginning of the yearly time step
-      if(NLcount(outputLynx) != 0){
-        nAll <- NLcount(agents = outputLynx)
-        nRes <- NLcount(agents = NLwith(agents = outputLynx,
+      if(NLcount(outputLynxPop) != 0){
+        nAll <- NLcount(agents = outputLynxPop)
+        nRes <- NLcount(agents = NLwith(agents = outputLynxPop,
                                         var = "status", val = "res"))
-        nDisp <- NLcount(agents = NLwith(agents = outputLynx,
+        nDisp <- NLcount(agents = NLwith(agents = outputLynxPop,
                                          var = "status", val = "disp"))
       } else {
         nAll <- 0
@@ -124,118 +212,85 @@ for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
       }
       
       # Mortality rates
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nCollAll"] <- nCollAll
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nCollRes"] <- nCollRes
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nCollDisp"] <- nCollDisp
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nNoCollAll"] <- nNoCollAll
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nNoCollRes"] <- nNoCollRes
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nNoCollDisp"] <- nNoCollDisp
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nAll"] <- nAll
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nRes"] <- nRes
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "nDisp"] <- nDisp
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollAll"] <- nCollAll / nAll
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollRes"] <- nCollRes / nRes
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rCollDisp"] <- nCollDisp / nDisp
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rNoCollAll"] <- nNoCollAll / nAll
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rNoCollDisp"] <- nNoCollDisp / nDisp
-      deathLynx[deathLynx[, "year"] == y & deathLynx[, "repSim"] == i, "rNoCollRes"] <- nNoCollRes / nRes
+      if(popName == "Alps"){
+        rAllRes_Alps = c(rAllRes_Alps, nDeadRes / nRes) 
+        rAllDisp_Alps = c(rAllDisp_Alps, nDeadDisp / nDisp)
+        rCollRes_Alps = c(rCollRes_Alps, nCollRes / nRes)
+        rCollDisp_Alps = c(rCollDisp_Alps, nCollDisp / nDisp)
+        if(y <= 7){ # Number of collisions only for the first 5 years
+          nCollAlps = c(nCollAlps, nCollAll)
+        }
+      }
+      if(popName == "Jura"){
+        rAllRes_Jura = c(rAllRes_Jura, nDeadRes / nRes)
+        rAllDisp_Jura = c(rAllDisp_Jura, nDeadDisp / nDisp)
+        rCollRes_Jura = c(rCollRes_Jura, nCollRes / nRes)
+        rCollDisp_Jura = c(rCollDisp_Jura, nCollDisp / nDisp)
+        if(y <= 7){ # Number of collisions only for the first 5 years
+          nCollJura = c(nCollJura, nCollAll)
+        }
+      }
       
     }
-    print(i)
   }
   
-  
-  # We need to remove the time when there were no more individuals
-  rCollAll <- c(rCollAll, mean(deathLynx[deathLynx[, "nAll"] != 0, "rCollAll"], na.rm = TRUE))
-  rCollRes <- c(rCollRes, mean(deathLynx[deathLynx[, "nRes"] != 0, "rCollRes"], na.rm = TRUE))
-  rCollDisp <- c(rCollDisp, mean(deathLynx[deathLynx[, "nDisp"] != 0, "rCollDisp"], na.rm = TRUE))
-  rNoCollAll <- c(rNoCollAll, mean(deathLynx[deathLynx[, "nAll"] != 0, "rNoCollAll"], na.rm = TRUE))
-  rNoCollRes <- c(rNoCollRes, mean(deathLynx[deathLynx[, "nRes"] != 0, "rNoCollRes"], na.rm = TRUE))
-  rNoCollDisp <- c(rNoCollDisp, mean(deathLynx[deathLynx[, "nDisp"] != 0, "rNoCollDisp"], na.rm = TRUE))
-  
-}
-
-# Mean for the Alps
-rNoCollRes[1]
-rNoCollDisp[1]
-rCollRes[1]
-rCollDisp[1]
-# Mean for the Jura
-rNoCollRes[2]
-rNoCollDisp[2]
-rCollRes[2]
-rCollDisp[2]
-
-#######################
-## Reproduction rate ##
-#######################
-pRepro <- numeric()
-
-for(i in 1:length(listSim)){ # for each simulation run
-  load(paste0(pathFiles, "/", listSim[i]))
+  ###############
+  ## Reproduction
   
   FemRes <- lynxIBMrun$FemRes # resident individuals
   nKittyBorn <- lynxIBMrun$nKittyBorn # number of kittens produced per reproducing female
   
-  nFemRes <- rep(0, length(FemRes) - 10) # FemRes = 51 elements
-  nKitty <- rep(0, length(FemRes) - 10)
+  nFemRes <- rep(0, length(FemRes) - 3) 
+  nKitty <- rep(0, length(FemRes) - 3)
   
-  for(j in 10:(length(FemRes) - 1)){ # remove burn-in
+  for(j in 3:(length(FemRes) - 1)){ # remove burn-in
     # Number of resident females
-    nFemRes[j-9] <- NLcount(FemRes[[j]])
+    nFemRes[j-2] <- NLcount(FemRes[[j]])
   }
   
-  for(j in 10:length(nKittyBorn)){ # remove burn-in
+  for(j in 3:length(nKittyBorn)){ # remove burn-in
     # Number of females which actually produced newborns
-    nKitty[j-9] <- length(which(nKittyBorn[[j]] != 0))
+    nKitty[j-2] <- length(which(nKittyBorn[[j]] != 0))
   }
   
   # Reproduction rate
   pRepro <- c(pRepro, nKitty / nFemRes)
-  print(i)
-}
-
-summary(pRepro)
-
-
-########################
-## Dispersal distance ##
-########################
-dispDistList <- list()
-popList <- 1
-# Use a raster to transfer the territories on it to extract the centroid
-habMapSpaDES <- raster("appendix_lynxIBM/module/inputs/habMap.tif")
-
-for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
-  dispDist <- c()
   
-  for(i in 1:length(listSim)){ # for each simulation run
-    load(paste0(pathFiles, "/", listSim[i]))
+  
+  ######################
+  ## Dispersal distances
+  
+  for(popName in c("Alps", "Jura")){
     
-    bornInd <- cbind.data.frame(xcor = c(), ycor = c(), who = c())
-    resInd <- cbind.data.frame(xcor2 = c(), ycor2 = c(), who = c())
+    resInd <- NULL
     
-    for(y in 10:(lastYear - 1)){ 
+    for(y in 3:(lastYear - 1)){ 
       
-      # Territories where lynx were born
-      if(NLcount(agents = NLwith(agents = lynxIBMrun$bornLynx[[y]],var = "pop", val = popName)) > 0){
-        # Territory centroids
-        habMapSpaDES[] <- lynxIBMrun$outputTerrMap[[y]] # transfer the territory number from the worldMatrix to a raster
-        terrPol <- rasterToPolygons(habMapSpaDES, dissolve = TRUE)
-        spPoints <- gCentroid(terrPol, byid = TRUE)
-        centroidTerr <- cbind.data.frame(xcor = spPoints@coords[,1], ycor = spPoints@coords[,2], 
-                                         terrNum = terrPol@data)
-        # Born individuals
+      # Find territories where lynx were born
+      if(NLcount(agents = NLwith(agents = lynxIBMrun$bornLynx[[y]], var = "pop", val = popName)) > 0){
+        
+        # Current year territory centroids
+        values(habMapSpaDES) <- of(world = lynxIBMrun$outputTerrMap[[y]], agents = NetLogoR::patches(lynxIBMrun$outputTerrMap[[y]])) # transfer the territory number from the worldMatrix to a raster
+        terrPol <- as.polygons(habMapSpaDES, dissolve = TRUE)
+        centroidTerr <- terrPol %>% 
+          st_as_sf() %>% 
+          st_centroid()
+        # Born individuals this year
         terrBornInd <- of(world = lynxIBMrun$outputTerrMap[[y]],
                           agents = patchHere(world = lynxIBMrun$outputTerrMap[[y]], 
                                              turtles = NLwith(agents=lynxIBMrun$bornLynx[[y]],var = "pop",val = popName)))
-        terrBornInd2 <- merge(as.data.frame(terrBornInd), centroidTerr, by.x = "terrBornInd", by.y = "habMap")
-        terrBornInd2 <- terrBornInd2[match(terrBornInd, terrBornInd2[,"terrBornInd"]),]
-        bornInd <- rbind(bornInd, 
-                         cbind.data.frame(xcor = terrBornInd2[,"xcor"], ycor = terrBornInd2[,"ycor"],
-                                          who = of(agents = NLwith(agents=lynxIBMrun$bornLynx[[y]],var = "pop",val = popName), var = "who")))
+        whoBornInd <- of(agents = NLwith(agents=lynxIBMrun$bornLynx[[y]],var = "pop",val = popName), var = "who")
+        terrBornInd2 <- centroidTerr %>% 
+          merge(., cbind.data.frame(habMap = terrBornInd, who = whoBornInd)) %>% 
+          select(who)
         
+        if(y == 3){
+          bornInd <- terrBornInd2
+        } else{
+          bornInd <- rbind(bornInd, terrBornInd2)
+        }
       }
+      
       # Territories of resident lynx
       if(NLcount(agents = lynxIBMrun$resLynx[[y]]) > 0 & NLcount(agents = lynxIBMrun$outputLynx[[y + 1]]) > 0){
         
@@ -247,20 +302,26 @@ for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
                          val = of(agents = lynxIBMrun$outputLynx[[y + 1]], var = "who"))
         if(NLcount(resFem) > 0){
           # Territory centroids
-          habMapSpaDES[] <- lynxIBMrun$outputTerrMap[[y + 1]] # transfer the territory number from the worldMatrix to a raster
-          terrPol <- rasterToPolygons(habMapSpaDES, dissolve = TRUE)
-          spPoints <- gCentroid(terrPol, byid = TRUE)
-          centroidTerr <- cbind.data.frame(xcor = spPoints@coords[,1], ycor = spPoints@coords[,2], 
-                                           terrNum = terrPol@data)
+          values(habMapSpaDES) <- of(world = lynxIBMrun$outputTerrMap[[y + 1]], agents = NetLogoR::patches(lynxIBMrun$outputTerrMap[[y + 1]])) # transfer the territory number from the worldMatrix to a raster
+          terrPol <- as.polygons(habMapSpaDES, dissolve = TRUE)
+          centroidTerr <- terrPol %>% 
+            st_as_sf() %>% 
+            st_centroid()
+          
           # Resident females
           terrResFem <- of(world = lynxIBMrun$outputTerrMap[[y + 1]],
                            agents = patchHere(world = lynxIBMrun$outputTerrMap[[y + 1]], turtles = resFem))
-          terrResFem2 <- merge(as.data.frame(terrResFem), centroidTerr, by.x = "terrResFem", by.y = "habMap")
-          terrResFem2 <- terrResFem2[match(terrResFem, terrResFem2[,"terrResFem"]),]
-          resInd <- rbind(resInd, 
-                          cbind.data.frame(xcor2 = terrResFem2[,"xcor"], ycor2 = terrResFem2[,"ycor"],
-                                           who = of(agents = resFem, var = "who")))
+          whoResFem <- of(agents = resFem, var = "who")
           
+          terrResFem2 <- centroidTerr %>% 
+            merge(., cbind.data.frame(habMap = terrResFem, who = whoResFem)) %>% 
+            select(who)
+          
+          if(y == 3){
+            resInd <- terrResFem2
+          } else{
+            resInd <- rbind(resInd, terrResFem2)
+          }
         }
         # Males
         resMal <- NLwith(agents = lynxIBMrun$resLynx[[y]], var = "sex", val = "M")
@@ -276,51 +337,102 @@ for(popName in c("Alps", "Jura", "Vosges-Palatinate", "BlackForest")){
             allFem <- NLwith(agents = lynxIBMrun$outputLynx[[y + 1]], var = "maleID", val = eachMale)
             # Retrieve the territories of these females (their who numbers)
             # Territory centroids
-            habMapSpaDES[] <- lynxIBMrun$outputTerrMap[[y + 1]] # transfer the territory number from the worldMatrix to a raster
-            habMapSpaDES[!habMapSpaDES %in% of(agents = allFem, var = "who")] <- NA
-            terrPol <- rasterToPolygons(habMapSpaDES, dissolve = TRUE)
-            spPoints <- gCentroid(terrPol)
-            centroidTerr <- cbind.data.frame(xcor = spPoints@coords[,1], ycor = spPoints@coords[,2], 
-                                             terrNum = eachMale)
-            resInd <- rbind(resInd, 
-                            cbind.data.frame(xcor2 = centroidTerr[,"xcor"], ycor2 = centroidTerr[,"ycor"],
-                                             who = eachMale))
+            terrVal <- of(world = lynxIBMrun$outputTerrMap[[y + 1]], agents = NetLogoR::patches(lynxIBMrun$outputTerrMap[[y + 1]])) # transfer the territory number from the worldMatrix to a raster
+            terrVal[!terrVal %in% of(agents = allFem, var = "who")] <- NA
+            values(habMapSpaDES) <- terrVal
+            
+            terrPol <- as.polygons(habMapSpaDES, dissolve = TRUE)
+            centroidTerr <- terrPol %>% 
+              st_as_sf() %>% 
+              st_union %>% 
+              st_centroid() %>% 
+              st_sf %>% 
+              mutate(who = eachMale)
+            
+            if(is.null(resInd)){
+              resInd <- centroidTerr
+            } else{
+              resInd <- rbind(resInd, centroidTerr)
+            }
+            
           }
         }
       }
     }
     
-    # At the end of the simulation run, merge the lynx born territory centroid 
-    # with the centroid of the place where they became residents based on their ID
-    # and calculate the distance
-    if(nrow(bornInd) != 0){
-      
-      bornResInd <- merge(bornInd, resInd, by = "who", all = TRUE)
-      bornResInd <- na.omit(bornResInd)
-      if(nrow(bornResInd) != 0){
-        bornResInd$dist <- spDists(x = spTransform(SpatialPoints(coords = cbind(pxcor = bornResInd$xcor, pycor = bornResInd$ycor),
-                                                                 proj4string = habMapSpaDES@crs),
-                                                   "+proj=longlat +ellps=WGS84"),
-                                   y = spTransform(SpatialPoints(coords = cbind(pxcor = bornResInd$xcor2, pycor = bornResInd$ycor2),
-                                                                 proj4string = habMapSpaDES@crs),
-                                                   "+proj=longlat +ellps=WGS84"),
-                                   diagonal = TRUE)
-        dispDist <- c(dispDist, bornResInd$dist[!is.na(bornResInd$dist)])
-      }
-    }
+    # Calculate the distances between the born and the resident territories based on the ID
+    # Remove duplicated individuals (if they had multiple territories)
+    resInd <- resInd[!duplicated(resInd$who), ]
+    # Find matching who for born and residential individuals
+    whoInter <- intersect(st_drop_geometry(bornInd)[,1], st_drop_geometry(resInd)[,1])
+    bornIndInter <- bornInd %>% 
+      filter(who %in% whoInter)
+    # Bug sometimes, individuals with the same ID have different born territories
+    # Remove all these individuals. Problem fixed in the model
+    bornIndInter <- bornIndInter[!bornIndInter$who %in% as.numeric(names(table(bornIndInter$who)[table(bornIndInter$who) > 1])), ]
+    resIndInter <- resInd %>% 
+      filter(who %in% st_drop_geometry(bornIndInter)[,1]) %>% 
+      arrange(who, st_drop_geometry(bornIndInter)[,1])
+    distTer <- st_distance(bornIndInter, resIndInter, by_element = TRUE, which = "Euclidean")
     
-    print(i)
+    if(popName == "Alps"){
+      distDispAlps <- c(distDispAlps, distTer)
+    }
+    if(popName == "Jura"){
+      distDispJura <- c(distDispJura, distTer)
+    }
   }
   
-  
-  dispDistList[[popList]] <- dispDist
-  popList <- popList + 1
-}  
+  print(file)
+}
 
-summary(dispDistList[[1]]) # Alps
-summary(dispDistList[[2]]) # Jura
-summary(dispDistList[[3]]) # Vosges-Palatinate
-summary(dispDistList[[4]]) # BlackForest
+# Summary for best calibration
+# Mortality Alps
+calibrIBM[1, "mean_rAllRes_Alps"] <- mean(rAllRes_Alps, na.rm = TRUE)
+calibrIBM[1, "CI_inf_rAllRes_Alps"] <- t.test(rAllRes_Alps, na.rm = TRUE)$conf.int[1]
+calibrIBM[1, "CI_sup_rAllRes_Alps"] <- t.test(rAllRes_Alps, na.rm = TRUE)$conf.int[2]
+calibrIBM[1, "mean_rAllDisp_Alps"] <- mean(rAllDisp_Alps, na.rm = TRUE)
+calibrIBM[1, "CI_inf_rAllDisp_Alps"] <- t.test(rAllDisp_Alps, na.rm = TRUE)$conf.int[1]
+calibrIBM[1, "CI_sup_rAllDisp_Alps"] <- t.test(rAllDisp_Alps, na.rm = TRUE)$conf.int[2]
+calibrIBM[1, "mean_rCollRes_Alps"] <- mean(rCollRes_Alps, na.rm = TRUE)
+calibrIBM[1, "CI_inf_rCollRes_Alps"] <- t.test(rCollRes_Alps, na.rm = TRUE)$conf.int[1]
+calibrIBM[1, "CI_sup_rCollRes_Alps"] <- t.test(rCollRes_Alps, na.rm = TRUE)$conf.int[2]
+calibrIBM[1, "mean_rCollDisp_Alps"] <- mean(rCollDisp_Alps, na.rm = TRUE)
+calibrIBM[1, "CI_inf_rCollDisp_Alps"] <- t.test(rCollDisp_Alps, na.rm = TRUE)$conf.int[1]
+calibrIBM[1, "CI_sup_rCollDisp_Alps"] <- t.test(rCollDisp_Alps, na.rm = TRUE)$conf.int[2]
+calibrIBM[1, "mean_nCollAlps"] <- mean(nCollAlps, na.rm = TRUE)
+calibrIBM[1, "CI_inf_nCollAlps"] <- t.test(nCollAlps, na.rm = TRUE)$conf.int[1]
+calibrIBM[1, "CI_sup_nCollAlps"] <- t.test(nCollAlps, na.rm = TRUE)$conf.int[2]
+# Mortality Jura
+calibrIBM[1, "mean_rAllRes_Jura"] <- mean(rAllRes_Jura, na.rm = TRUE)
+calibrIBM[1, "CI_inf_rAllRes_Jura"] <- t.test(rAllRes_Jura, na.rm = TRUE)$conf.int[1]
+calibrIBM[1, "CI_sup_rAllRes_Jura"] <- t.test(rAllRes_Jura, na.rm = TRUE)$conf.int[2]
+calibrIBM[1, "mean_rAllDisp_Jura"] <- mean(rAllDisp_Jura, na.rm = TRUE)
+calibrIBM[1, "CI_inf_rAllDisp_Jura"] <- t.test(rAllDisp_Jura, na.rm = TRUE)$conf.int[1]
+calibrIBM[1, "CI_sup_rAllDisp_Jura"] <- t.test(rAllDisp_Jura, na.rm = TRUE)$conf.int[2]
+calibrIBM[1, "mean_rCollRes_Jura"] <- mean(rCollRes_Jura, na.rm = TRUE)
+calibrIBM[1, "CI_inf_rCollRes_Jura"] <- t.test(rCollRes_Jura, na.rm = TRUE)$conf.int[1]
+calibrIBM[1, "CI_sup_rCollRes_Jura"] <- t.test(rCollRes_Jura, na.rm = TRUE)$conf.int[2]
+calibrIBM[1, "mean_rCollDisp_Jura"] <- mean(rCollDisp_Jura, na.rm = TRUE)
+calibrIBM[1, "CI_inf_rCollDisp_Jura"] <- t.test(rCollDisp_Jura, na.rm = TRUE)$conf.int[1]
+calibrIBM[1, "CI_sup_rCollDisp_Jura"] <- t.test(rCollDisp_Jura, na.rm = TRUE)$conf.int[2]
+calibrIBM[1, "mean_nCollJura"] <- mean(nCollJura, na.rm = TRUE)
+calibrIBM[1, "CI_inf_nCollJura"] <- t.test(nCollJura, na.rm = TRUE)$conf.int[1]
+calibrIBM[1, "CI_sup_nCollJura"] <- t.test(nCollJura, na.rm = TRUE)$conf.int[2]
+# Reproduction
+calibrIBM[1, "mean_rRepro"] <- mean(pRepro, na.rm = TRUE)
+calibrIBM[1, "CI_inf_rRepro"] <- t.test(pRepro, na.rm = TRUE)$conf.int[1]
+calibrIBM[1, "CI_sup_rRepro"] <- t.test(pRepro, na.rm = TRUE)$conf.int[2]
+# Dispersal distance
+calibrIBM[1, "mean_distDispAlps"] <- mean(distDispAlps, na.rm = TRUE) / 1000
+calibrIBM[1, "CI_inf_distDispAlps"] <- t.test(distDispAlps, na.rm = TRUE)$conf.int[1] / 1000
+calibrIBM[1, "CI_sup_distDispAlps"] <- t.test(distDispAlps, na.rm = TRUE)$conf.int[2]/ 1000
+calibrIBM[1, "mean_distDispJura"] <- mean(distDispJura, na.rm = TRUE) / 1000
+calibrIBM[1, "CI_inf_distDispJura"] <- t.test(distDispJura, na.rm = TRUE)$conf.int[1] / 1000
+calibrIBM[1, "CI_sup_distDispJura"] <- t.test(distDispJura, na.rm = TRUE)$conf.int[2] / 1000
+
+save(calibrIBM, file = "C:/Users/sarah.bauduin/Documents/GitHub/appendix_lynxIBM/module/outputs_bestCal.RData")
+
 
 
 ################################################################
@@ -341,19 +453,19 @@ for(i in 1:length(listSim)){ # for each simulation run
   for(y in 1:(lastYear+1)){
     
     indAlps <- turtlesOn(world = lynxIBMrun$popDist, turtles = lynxIBMrun$outputLynx[[y]],
-                         agents = NLwith(agents = patches(lynxIBMrun$popDist), world = lynxIBMrun$popDist, val = 1))
+                         agents = NLwith(agents = NetLogoR::patches(lynxIBMrun$popDist), world = lynxIBMrun$popDist, val = 1))
     popAlps[popAlps[, "year"] == y & popAlps[, "repSim"] == i, "nInd"] <- NLcount(indAlps) 
     
     indJura <- turtlesOn(world = lynxIBMrun$popDist, turtles = lynxIBMrun$outputLynx[[y]],
-                         agents = NLwith(agents = patches(lynxIBMrun$popDist), world = lynxIBMrun$popDist, val = 2))
+                         agents = NLwith(agents = NetLogoR::patches(lynxIBMrun$popDist), world = lynxIBMrun$popDist, val = 2))
     popJura[popJura[, "year"] == y & popJura[, "repSim"] == i, "nInd"] <- NLcount(indJura) 
    
     indVosPal <- turtlesOn(world = lynxIBMrun$popDist, turtles = lynxIBMrun$outputLynx[[y]],
-                           agents = NLwith(agents = patches(lynxIBMrun$popDist), world = lynxIBMrun$popDist, val = 3))
+                           agents = NLwith(agents = NetLogoR::patches(lynxIBMrun$popDist), world = lynxIBMrun$popDist, val = 3))
     popVP[popVP[, "year"] == y & popVP[, "repSim"] == i, "nInd"] <- NLcount(indVosPal) 
         
     indBF <- turtlesOn(world = lynxIBMrun$popDist, turtles = lynxIBMrun$outputLynx[[y]],
-                         agents = NLwith(agents = patches(lynxIBMrun$popDist), world = lynxIBMrun$popDist, val = 4))
+                         agents = NLwith(agents = NetLogoR::patches(lynxIBMrun$popDist), world = lynxIBMrun$popDist, val = 4))
     popBF[popBF[, "year"] == y & popBF[, "repSim"] == i, "nInd"] <- NLcount(indBF)
   }
   print(i)
@@ -380,8 +492,8 @@ ggplot(allPopSum, aes(x=year, y=r, colour=Populations)) +
   geom_ribbon(aes(ymin=r-ci, ymax=r+ci, x=year, fill=Populations),alpha = 0.3) +
   geom_line() +
   geom_point() +
-  coord_cartesian(ylim=c(0, 2)) +
-  annotate("rect", xmin = -Inf, xmax = 10, ymin = -Inf, ymax = Inf, alpha = .7) +
+  coord_cartesian(ylim=c(0.8, 1.6)) +
+  annotate("rect", xmin = -Inf, xmax = 3, ymin = -Inf, ymax = Inf, alpha = .7) +
   labs(x ="Years simulated", y = "Population growth rates")
 
 
@@ -390,7 +502,7 @@ ggplot(allPopSum, aes(x=year, y=r, colour=Populations)) +
 ##################
 # Load a map from any simulation to have the study area
 load(paste0(pathFiles, "/", listSim[1]))
-mapLynxAbund <- NLset(world = lynxIBMrun$habitatMap, agents = patches(lynxIBMrun$habitatMap), val = 0) # empty a map
+mapLynxAbund <- NLset(world = lynxIBMrun$habitatMap, agents = NetLogoR::patches(lynxIBMrun$habitatMap), val = 0) # empty a map
 
 for(i in 1:length(listSim)){ # for each simulation run
   load(paste0(pathFiles, "/", listSim[i]))
@@ -409,7 +521,7 @@ for(i in 1:length(listSim)){ # for each simulation run
 # Transfer the data from the worldMatrix map to a raster format
 mapLynxAbundRas <- raster("appendix_lynxIBM/module/inputs/habMap.tif")
 # Rescale the value to obtain a mean over all simulations
-mapLynxAbundRas[] <- of(world = mapLynxAbund, agents = patches(mapLynxAbund)) / nSim
+mapLynxAbundRas[] <- of(world = mapLynxAbund, agents = NetLogoR::patches(mapLynxAbund)) / nSim
 # The map before was of 1 km2, transform it into 100 km2
 mapLynxAbund100km2 <- aggregate(mapLynxAbundRas, fact = 10, fun = sum)
 # Give NA where there were no lynx simulated
@@ -438,13 +550,13 @@ for(i in 1:length(listSim)){ # for each simulation run
     
     # Identify the residents in the different populations
     resAlps <- turtlesOn(world = lynxIBMrun$popDist, turtles = lynxIBMrun$resLynx[[y]],
-                         agents = NLwith(agents = patches(lynxIBMrun$popDist), world = lynxIBMrun$popDist, val = 1))
+                         agents = NLwith(agents = NetLogoR::patches(lynxIBMrun$popDist), world = lynxIBMrun$popDist, val = 1))
     resJura <- turtlesOn(world = lynxIBMrun$popDist, turtles = lynxIBMrun$resLynx[[y]],
-                         agents = NLwith(agents = patches(lynxIBMrun$popDist), world = lynxIBMrun$popDist, val = 2))
+                         agents = NLwith(agents = NetLogoR::patches(lynxIBMrun$popDist), world = lynxIBMrun$popDist, val = 2))
     resVP <- turtlesOn(world = lynxIBMrun$popDist, turtles = lynxIBMrun$resLynx[[y]],
-                       agents = NLwith(agents = patches(lynxIBMrun$popDist), world = lynxIBMrun$popDist, val = 3))
+                       agents = NLwith(agents = NetLogoR::patches(lynxIBMrun$popDist), world = lynxIBMrun$popDist, val = 3))
     resBF <- turtlesOn(world = lynxIBMrun$popDist, turtles = lynxIBMrun$resLynx[[y]],
-                       agents = NLwith(agents = patches(lynxIBMrun$popDist), world = lynxIBMrun$popDist, val = 4))
+                       agents = NLwith(agents = NetLogoR::patches(lynxIBMrun$popDist), world = lynxIBMrun$popDist, val = 4))
     
     # Where these residents were from?
     if(NLcount(resAlps) != 0){
@@ -517,7 +629,7 @@ ggplot(movePopLongDTSum2, aes(x = year, y = Cum.Sum, colour = Populations)) +
   labs(x= "Years simulated", y = "Cumulative sum of established individuals in their non-native population", color = "Populations") +
   scale_color_manual(values = colRainbow) +
   scale_fill_manual(values = colRainbow) +
-  annotate("rect", xmin = -Inf, xmax = 10, ymin = -Inf, ymax = Inf, alpha = .7)
+  annotate("rect", xmin = -Inf, xmax = 3, ymin = -Inf, ymax = Inf, alpha = .7)
 
 
 # Non-cumulative number of individuals
@@ -544,10 +656,10 @@ ggplot(meanMovePop, aes(x = year, y = mean, colour = variable)) +
                                                      "Jura to Black Forest", "Jura to Vosges-Palatinate", "Black Forest to Alps",
                                                      "Black Forest to Jura", "Black Forest to Vosges-Palatinate", "Vosges-Palatinate to Alps",
                                                      "Vosges-Palatinate to Black Forest", "Vosges-Palatinate to Jura")) +
-  guides(color = guide_legend(ncol = 3)) + 
+  #guides(color = guide_legend(ncol = 4)) + 
   #scale_fill_manual(values = colRainbow) +
-  annotate("rect", xmin = -Inf, xmax = 10, ymin = -Inf, ymax = Inf, alpha = .7) +
-  theme(legend.position = "bottom")
+  annotate("rect", xmin = -Inf, xmax = 3, ymin = -Inf, ymax = Inf, alpha = .7)# +
+  #theme(legend.position = "bottom")
 
 
 #########################
@@ -555,24 +667,24 @@ ggplot(meanMovePop, aes(x = year, y = mean, colour = variable)) +
 #########################
 # Load a map from any simulation to have the study area
 load(paste0(pathFiles, "/", listSim[1]))
-terrOccMap <- NLset(world = lynxIBMrun$outputTerrMap[[1]], agents = patches(lynxIBMrun$outputTerrMap[[1]]), val = 0)  # empty a map
+terrOccMap <- NLset(world = lynxIBMrun$outputTerrMap[[1]], agents = NetLogoR::patches(lynxIBMrun$outputTerrMap[[1]]), val = 0)  # empty a map
 
 for(i in 1:length(listSim)){ # for each simulation run
   load(paste0(pathFiles, "/", listSim[i]))
   terrOccMapSim <- lynxIBMrun$outputTerrMap[[lastYear]]
-  valTerrOccMapSim <- of(world = terrOccMapSim, agents = patches(terrOccMapSim))
+  valTerrOccMapSim <- of(world = terrOccMapSim, agents = NetLogoR::patches(terrOccMapSim))
   # Transform the value of the territories into 0 and 1 for presence or abscence of a territory
   valTerrOccMapSim[!is.na(valTerrOccMapSim)] <- 1
   valTerrOccMapSim[is.na(valTerrOccMapSim)] <- 0
-  terrOccMap <- NLset(world = terrOccMap, agents = patches(terrOccMap),
-                      val = of(world = terrOccMap, agents = patches(terrOccMap)) + valTerrOccMapSim)
+  terrOccMap <- NLset(world = terrOccMap, agents = NetLogoR::patches(terrOccMap),
+                      val = of(world = terrOccMap, agents = NetLogoR::patches(terrOccMap)) + valTerrOccMapSim)
   print(i)
 }
 
 # Transfer the data from the worldMatrix map to a raster format
 terrOccMapRas <- raster("appendix_lynxIBM/module/inputs/habMap.tif")
 # Rescale the value to obtain a mean over all simulations
-terrOccMapRas[] <- of(world = terrOccMap, agents = patches(terrOccMap)) / nSim
+terrOccMapRas[] <- of(world = terrOccMap, agents = NetLogoR::patches(terrOccMap)) / nSim
 # Give NA where there were no female lynx territory simulated
 terrOccMapRas[terrOccMapRas == 0] <- NA
 # Plot the territory occupancy with the country borders
