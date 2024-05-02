@@ -441,7 +441,7 @@ nrow(matchingCal)
 
 # Second, among the one matching the patterns, select the one where the means are the closest
 # Change qTresh from 1 to 0 until selecting the best xxx simulations
-qTresh <- 0.8
+qTresh <- 0.74
 selectedCal <- matchingCal[abs(matchingCal$mean_rAllRes_Alps_ref - matchingCal$mean_rAllRes_Alps) <= quantile(abs(matchingCal$mean_rAllRes_Alps_ref - matchingCal$mean_rAllRes_Alps), qTresh) &
                              abs(matchingCal$mean_rAllDisp_Alps_ref - matchingCal$mean_rAllDisp_Alps) <= quantile(abs(matchingCal$mean_rAllDisp_Alps_ref - matchingCal$mean_rAllDisp_Alps), qTresh) &
                              abs(matchingCal$mean_rCollRes_Alps_ref - matchingCal$mean_rCollRes_Alps) <= quantile(abs(matchingCal$mean_rCollRes_Alps_ref - matchingCal$mean_rCollRes_Alps), qTresh) &

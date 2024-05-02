@@ -16,61 +16,16 @@ library(sf)
 ## Analyze the simulations ##
 #############################
 # Read all simulated files
-pathFiles <- "appendix_lynxIBM/module/outputs"
+pathFiles <- "C:/Users/sarah.bauduin/Documents/GitHub/appendix_lynxIBM/module/outputs"
 listSim <- list.files(pathFiles)[3:102] # remove the first two files (cache and bestCalibration)
 nSim <- length(listSim)
 lastYear <- 50
-
-# Play with the color from the palet used by ggplot
-gg_color <- function(n) {
-  hues = seq(15, 375, length = n + 1)
-  hcl(h = hues, l = 65, c = 100)[1:n]
-}
-
 
 ################################################################
 #######################
 ## MODEL CALIBRATION ##
 #######################
 
-calibrIBM <- data.frame(## Reference values
-                        # Mortality Alps
-                        mean_rAllRes_Alps_ref = 0.24, CI_inf_rAllRes_Alps_ref = 0.08, CI_sup_rAllRes_Alps_ref = 0.57,
-                        mean_rAllDisp_Alps_ref = 0.24, CI_inf_rAllDisp_Alps_ref = 0.15, CI_sup_rAllDisp_Alps_ref = 0.38,
-                        mean_rCollRes_Alps_ref = 0.02, CI_inf_rCollRes_Alps_ref = 0, CI_sup_rCollRes_Alps_ref = 0.059,
-                        mean_rCollDisp_Alps_ref = 0.077, CI_inf_rCollDisp_Alps_ref = 0, CI_sup_rCollDisp_Alps_ref = 0.211,
-                        mean_nCollAlps_ref = 2, CI_inf_nCollAlps_ref = 0, CI_sup_nCollAlps_ref = 3,
-                        # Mortality Jura
-                        mean_rAllRes_Jura_ref = 0.17, CI_inf_rAllRes_Jura_ref = 0.1, CI_sup_rAllRes_Jura_ref = 0.29,
-                        mean_rAllDisp_Jura_ref = 0.35, CI_inf_rAllDisp_Jura_ref = 0.16, CI_sup_rAllDisp_Jura_ref = 0.65,
-                        mean_rCollRes_Jura_ref = 0.034, CI_inf_rCollRes_Jura_ref = 0, CI_sup_rCollRes_Jura_ref = 0.08,
-                        mean_rCollDisp_Jura_ref = 0.067, CI_inf_rCollDisp_Jura_ref = 0, CI_sup_rCollDisp_Jura_ref = 0.185,
-                        mean_nCollJura_ref = 6, CI_inf_nCollJura_ref = 3, CI_sup_nCollJura_ref = 9,
-                        # Reproducion
-                        rRepro_ref = 0.81,
-                        # Dispersal distance
-                        mean_distDispAlps_ref = 26, CI_inf_distDispAlps_ref = 15, CI_sup_distDispAlps_ref = 36,
-                        mean_distDispJura_ref = 63, CI_inf_distDispJura_ref = 39, CI_sup_distDispJura_ref = 87,
-                        
-                        ## Simulated results
-                        # Mortality Alps
-                        mean_rAllRes_Alps = NA, CI_inf_rAllRes_Alps = NA, CI_sup_rAllRes_Alps = NA,
-                        mean_rAllDisp_Alps = NA, CI_inf_rAllDisp_Alps = NA, CI_sup_rAllDisp_Alps = NA,
-                        mean_rCollRes_Alps = NA, CI_inf_rCollRes_Alps = NA, CI_sup_rCollRes_Alps = NA,
-                        mean_rCollDisp_Alps = NA, CI_inf_rCollDisp_Alps = NA, CI_sup_rCollDisp_Alps = NA,
-                        mean_nCollAlps = NA, CI_inf_nCollAlps = NA, CI_sup_nCollAlps = NA,
-                        # Mortality Jura
-                        mean_rAllRes_Jura = NA, CI_inf_rAllRes_Jura = NA, CI_sup_rAllRes_Jura = NA,
-                        mean_rAllDisp_Jura = NA, CI_inf_rAllDisp_Jura = NA, CI_sup_rAllDisp_Jura = NA,
-                        mean_rCollRes_Jura = NA, CI_inf_rCollRes_Jura = NA, CI_sup_rCollRes_Jura = NA,
-                        mean_rCollDisp_Jura = NA, CI_inf_rCollDisp_Jura = NA, CI_sup_rCollDisp_Jura = NA,
-                        mean_nCollJura = NA, CI_inf_nCollJura = NA, CI_sup_nCollJura = NA,
-                        # Reproducion
-                        mean_rRepro = NA, CI_inf_rRepro = NA, CI_sup_rRepro = NA,
-                        # Dispersal distance
-                        mean_distDispAlps = NA, CI_inf_distDispAlps = NA, CI_sup_distDispAlps = NA,
-                        mean_distDispJura = NA, CI_inf_distDispJura = NA, CI_sup_distDispJura = NA
-)
 habMapSpaDES <- rast("C:/Users/sarah.bauduin/Documents/GitHub/appendix_lynxIBM/module/inputs/habMap.tif")
 
 # Mortality
@@ -97,7 +52,7 @@ for(file in 1:length(listSim)){
   ############
   ## Mortality
   
-  for(y in 3:(lastYear)){
+  for(y in 1:(lastYear+1)){
     
     # The population in which lynx died is updated once they died
     if(NLcount(lynxIBMrun$deadLynxColl[[y]]) == 0){
@@ -217,18 +172,14 @@ for(file in 1:length(listSim)){
         rAllDisp_Alps = c(rAllDisp_Alps, nDeadDisp / nDisp)
         rCollRes_Alps = c(rCollRes_Alps, nCollRes / nRes)
         rCollDisp_Alps = c(rCollDisp_Alps, nCollDisp / nDisp)
-        if(y <= 7){ # Number of collisions only for the first 5 years
-          nCollAlps = c(nCollAlps, nCollAll)
-        }
+        nCollAlps = c(nCollAlps, nCollAll)
       }
       if(popName == "Jura"){
         rAllRes_Jura = c(rAllRes_Jura, nDeadRes / nRes)
         rAllDisp_Jura = c(rAllDisp_Jura, nDeadDisp / nDisp)
         rCollRes_Jura = c(rCollRes_Jura, nCollRes / nRes)
         rCollDisp_Jura = c(rCollDisp_Jura, nCollDisp / nDisp)
-        if(y <= 7){ # Number of collisions only for the first 5 years
-          nCollJura = c(nCollJura, nCollAll)
-        }
+        nCollJura = c(nCollJura, nCollAll)
       }
       
     }
@@ -240,17 +191,17 @@ for(file in 1:length(listSim)){
   FemRes <- lynxIBMrun$FemRes # resident individuals
   nKittyBorn <- lynxIBMrun$nKittyBorn # number of kittens produced per reproducing female
   
-  nFemRes <- rep(0, length(FemRes) - 3) 
-  nKitty <- rep(0, length(FemRes) - 3)
+  nFemRes <- rep(0, length(FemRes)-1) 
+  nKitty <- rep(0, length(FemRes)-1)
   
-  for(j in 3:(length(FemRes) - 1)){ # remove burn-in
+  for(j in 1:(length(FemRes) - 1)){
     # Number of resident females
-    nFemRes[j-2] <- NLcount(FemRes[[j]])
+    nFemRes[j] <- NLcount(FemRes[[j]])
   }
   
-  for(j in 3:length(nKittyBorn)){ # remove burn-in
+  for(j in 1:length(nKittyBorn)){
     # Number of females which actually produced newborns
-    nKitty[j-2] <- length(which(nKittyBorn[[j]] != 0))
+    nKitty[j] <- length(which(nKittyBorn[[j]] != 0))
   }
   
   # Reproduction rate
@@ -264,7 +215,7 @@ for(file in 1:length(listSim)){
     
     resInd <- NULL
     
-    for(y in 3:(lastYear - 1)){ 
+    for(y in 1:(lastYear - 1)){ 
       
       # Find territories where lynx were born
       if(NLcount(agents = NLwith(agents = lynxIBMrun$bornLynx[[y]], var = "pop", val = popName)) > 0){
@@ -284,7 +235,7 @@ for(file in 1:length(listSim)){
           merge(., cbind.data.frame(habMap = terrBornInd, who = whoBornInd)) %>% 
           select(who)
         
-        if(y == 3){
+        if(y == 1){
           bornInd <- terrBornInd2
         } else{
           bornInd <- rbind(bornInd, terrBornInd2)
@@ -317,7 +268,7 @@ for(file in 1:length(listSim)){
             merge(., cbind.data.frame(habMap = terrResFem, who = whoResFem)) %>% 
             select(who)
           
-          if(y == 3){
+          if(y == 1){
             resInd <- terrResFem2
           } else{
             resInd <- rbind(resInd, terrResFem2)
@@ -386,53 +337,121 @@ for(file in 1:length(listSim)){
   print(file)
 }
 
-# Summary for best calibration
-# Mortality Alps
-calibrIBM[1, "mean_rAllRes_Alps"] <- mean(rAllRes_Alps, na.rm = TRUE)
-calibrIBM[1, "CI_inf_rAllRes_Alps"] <- t.test(rAllRes_Alps, na.rm = TRUE)$conf.int[1]
-calibrIBM[1, "CI_sup_rAllRes_Alps"] <- t.test(rAllRes_Alps, na.rm = TRUE)$conf.int[2]
-calibrIBM[1, "mean_rAllDisp_Alps"] <- mean(rAllDisp_Alps, na.rm = TRUE)
-calibrIBM[1, "CI_inf_rAllDisp_Alps"] <- t.test(rAllDisp_Alps, na.rm = TRUE)$conf.int[1]
-calibrIBM[1, "CI_sup_rAllDisp_Alps"] <- t.test(rAllDisp_Alps, na.rm = TRUE)$conf.int[2]
-calibrIBM[1, "mean_rCollRes_Alps"] <- mean(rCollRes_Alps, na.rm = TRUE)
-calibrIBM[1, "CI_inf_rCollRes_Alps"] <- t.test(rCollRes_Alps, na.rm = TRUE)$conf.int[1]
-calibrIBM[1, "CI_sup_rCollRes_Alps"] <- t.test(rCollRes_Alps, na.rm = TRUE)$conf.int[2]
-calibrIBM[1, "mean_rCollDisp_Alps"] <- mean(rCollDisp_Alps, na.rm = TRUE)
-calibrIBM[1, "CI_inf_rCollDisp_Alps"] <- t.test(rCollDisp_Alps, na.rm = TRUE)$conf.int[1]
-calibrIBM[1, "CI_sup_rCollDisp_Alps"] <- t.test(rCollDisp_Alps, na.rm = TRUE)$conf.int[2]
-calibrIBM[1, "mean_nCollAlps"] <- mean(nCollAlps, na.rm = TRUE)
-calibrIBM[1, "CI_inf_nCollAlps"] <- t.test(nCollAlps, na.rm = TRUE)$conf.int[1]
-calibrIBM[1, "CI_sup_nCollAlps"] <- t.test(nCollAlps, na.rm = TRUE)$conf.int[2]
-# Mortality Jura
-calibrIBM[1, "mean_rAllRes_Jura"] <- mean(rAllRes_Jura, na.rm = TRUE)
-calibrIBM[1, "CI_inf_rAllRes_Jura"] <- t.test(rAllRes_Jura, na.rm = TRUE)$conf.int[1]
-calibrIBM[1, "CI_sup_rAllRes_Jura"] <- t.test(rAllRes_Jura, na.rm = TRUE)$conf.int[2]
-calibrIBM[1, "mean_rAllDisp_Jura"] <- mean(rAllDisp_Jura, na.rm = TRUE)
-calibrIBM[1, "CI_inf_rAllDisp_Jura"] <- t.test(rAllDisp_Jura, na.rm = TRUE)$conf.int[1]
-calibrIBM[1, "CI_sup_rAllDisp_Jura"] <- t.test(rAllDisp_Jura, na.rm = TRUE)$conf.int[2]
-calibrIBM[1, "mean_rCollRes_Jura"] <- mean(rCollRes_Jura, na.rm = TRUE)
-calibrIBM[1, "CI_inf_rCollRes_Jura"] <- t.test(rCollRes_Jura, na.rm = TRUE)$conf.int[1]
-calibrIBM[1, "CI_sup_rCollRes_Jura"] <- t.test(rCollRes_Jura, na.rm = TRUE)$conf.int[2]
-calibrIBM[1, "mean_rCollDisp_Jura"] <- mean(rCollDisp_Jura, na.rm = TRUE)
-calibrIBM[1, "CI_inf_rCollDisp_Jura"] <- t.test(rCollDisp_Jura, na.rm = TRUE)$conf.int[1]
-calibrIBM[1, "CI_sup_rCollDisp_Jura"] <- t.test(rCollDisp_Jura, na.rm = TRUE)$conf.int[2]
-calibrIBM[1, "mean_nCollJura"] <- mean(nCollJura, na.rm = TRUE)
-calibrIBM[1, "CI_inf_nCollJura"] <- t.test(nCollJura, na.rm = TRUE)$conf.int[1]
-calibrIBM[1, "CI_sup_nCollJura"] <- t.test(nCollJura, na.rm = TRUE)$conf.int[2]
+save(rAllRes_Alps, rAllDisp_Alps, rCollRes_Alps, rCollDisp_Alps, nCollAlps,
+     rAllRes_Jura, rAllDisp_Jura, rCollRes_Jura, rCollDisp_Jura, nCollJura,
+     pRepro, distDispAlps, distDispJura, 
+     file = "C:/Users/sarah.bauduin/Documents/GitHub/appendix_lynxIBM/module/outputs_bestCal.RData")
+
+# Mortality rates
+# All mortalities
+mortRateAll <- rbind(cbind.data.frame(mortR = rAllRes_Alps, Populations = "Alps", Status = "Residents"),
+                     cbind.data.frame(mortR = rAllDisp_Alps, Populations = "Alps", Status = "Dispersers"),
+                     cbind.data.frame(mortR = rAllRes_Jura, Populations = "Jura", Status = "Residents"),
+                     cbind.data.frame(mortR = rAllDisp_Jura, Populations = "Jura", Status = "Dispersers"))
+ggplot(data = mortRateAll, group = interaction("Populations", "Status")) +
+  geom_boxplot(aes(x = Status, y = mortR, fill = Populations), outlier.shape = NA) +
+  # Mean reference values
+  geom_point(data = cbind.data.frame(mortR = c(0.24, 0.24, 0.17, 0.35), Populations = c("Alps", "Alps", "Jura", "Jura"), 
+                                     Status = c("Residents", "Dispersers", "Residents", "Dispersers")),
+             mapping = aes(x = Status, y = mortR, group = Populations), position = position_dodge(width = 0.75),
+             shape = 20, size = 3) +
+  # CI reference values
+  geom_point(data = cbind.data.frame(mortR = c(0.08, 0.57, 0.15, 0.38, 0.1, 0.29, 0.16, 0.65), 
+                                     Populations = c("Alps", "Alps", "Alps", "Alps", "Jura", "Jura", "Jura", "Jura"), 
+                                     Status = c("Residents", "Residents", "Dispersers", "Dispersers", "Residents", "Residents", "Dispersers", "Dispersers")),
+             mapping = aes(x = Status, y = mortR, group = Populations), position = position_dodge(width = 0.75),
+             shape = 20, size = 5) +
+  scale_y_continuous(limits = c(0.05, 0.65)) +
+  labs(y = "Mortality rate", x = "")
+  
+# Collision mortalities
+mortRateColl <- rbind(cbind.data.frame(mortR = rCollRes_Alps, Populations = "Alps", Status = "Residents"),
+                     cbind.data.frame(mortR = rCollDisp_Alps, Populations = "Alps", Status = "Dispersers"),
+                     cbind.data.frame(mortR = rCollRes_Jura, Populations = "Jura", Status = "Residents"),
+                     cbind.data.frame(mortR = rCollDisp_Jura, Populations = "Jura", Status = "Dispersers"))
+ggplot(data = mortRateColl, group = interaction("Populations", "Status")) +
+  geom_boxplot(aes(x = Status, y = mortR, fill = Populations, color = Populations), outlier.shape = NA) +
+  scale_color_manual(values = c("#F8766D", "black")) +
+  # Mean reference values
+  geom_point(data = cbind.data.frame(mortR = c(0.02, 0.077, 0.034, 0.067), Populations = c("Alps", "Alps", "Jura", "Jura"), 
+                                     Status = c("Residents", "Dispersers", "Residents", "Dispersers")),
+             mapping = aes(x = Status, y = mortR, group = Populations), position = position_dodge(width = 0.75),
+             shape = 20, size = 3) +
+  # CI reference values
+  geom_point(data = cbind.data.frame(mortR = c(0, 0.059, 0, 0.211, 0, 0.08, 0, 0.185), 
+                                     Populations = c("Alps", "Alps", "Alps", "Alps", "Jura", "Jura", "Jura", "Jura"), 
+                                     Status = c("Residents", "Residents", "Dispersers", "Dispersers", "Residents", "Residents", "Dispersers", "Dispersers")),
+             mapping = aes(x = Status, y = mortR, group = Populations), position = position_dodge(width = 0.75),
+             shape = 20, size = 5) +
+  scale_y_continuous(limits = c(0, 0.25)) +
+  labs(y = "Mortality rate", x = "")
+
+# Number of collisions
+collPerYear <- rbind(cbind.data.frame(nColl = nCollAlps[seq(from = 2, to = (51 * (nSim - 1)) + 2, by = 51)], 
+                                      Populations = "Alps", Year = 1),
+                     cbind.data.frame(nColl = nCollAlps[seq(from = 3, to = (51 * (nSim - 1)) + 3, by = 51)], 
+                                      Populations = "Alps", Year = 2),
+                     cbind.data.frame(nColl = nCollAlps[seq(from = 4, to = (51 * (nSim - 1)) + 4, by = 51)], 
+                                      Populations = "Alps", Year = 3),
+                     cbind.data.frame(nColl = nCollAlps[seq(from = 5, to = (51 * (nSim - 1)) + 5, by = 51)],
+                                      Populations = "Alps", Year = 4),
+                     cbind.data.frame(nColl = nCollAlps[seq(from = 6, to = (51 * (nSim - 1)) + 6, by = 51)],
+                                      Populations = "Alps", Year = 5),
+                     cbind.data.frame(nColl = nCollJura[seq(from = 2, to = (51 * (nSim - 1)) + 2, by = 51)],
+                                      Populations = "Jura", Year = 1),
+                     cbind.data.frame(nColl = nCollJura[seq(from = 3, to = (51 * (nSim - 1)) + 3, by = 51)],
+                                      Populations = "Jura", Year = 2),
+                     cbind.data.frame(nColl = nCollJura[seq(from = 4, to = (51 * (nSim - 1)) + 4, by = 51)], 
+                                      Populations = "Jura", Year = 3),
+                     cbind.data.frame(nColl = nCollJura[seq(from = 5, to = (51 * (nSim - 1)) + 5, by = 51)], 
+                                      Populations = "Jura", Year = 4),
+                     cbind.data.frame(nColl = nCollJura[seq(from = 6, to = (51 * (nSim - 1)) + 6, by = 51)], 
+                                      Populations = "Jura", Year = 5)
+                     )
+# Collisions Alps
+ggplot(data = collPerYear[collPerYear$Populations == "Alps",]) +
+  geom_boxplot(aes(x = Year, y = nColl, group = Year), fill = "#F8766D", color = "#F8766D") +
+  geom_point(data = cbind.data.frame(nColl = c(2, 0, 3, 1, 3), Populations = "Jura", 
+                                     Year = 1:5),
+             mapping = aes(x = Year, y = nColl, group = Year), position = position_dodge(width = 0.75),
+             shape = 20, size = 3) +
+  scale_y_continuous(limits = c(0, 4)) +
+  labs(y = "Number of collisions")
+# Collisions Jura
+ggplot(data = collPerYear[collPerYear$Populations == "Jura",]) +
+  geom_boxplot(aes(x = Year, y = nColl, group = Year), fill = "#00BFC4", outlier.shape = NA) +
+  #geom_boxplot(aes(x = Year, y = nColl, group = Year), color = "#00BFC4") +
+  geom_point(data = cbind.data.frame(nColl = c(6, 10, 4, 5, 5), Populations = "Jura", 
+                                     Year = 1:5),
+             mapping = aes(x = Year, y = nColl, group = Year), position = position_dodge(width = 0.75),
+             shape = 20, size = 3) +
+  scale_y_continuous(limits = c(0, 12)) +
+  labs(y = "Number of collisions")
+  
 # Reproduction
-calibrIBM[1, "mean_rRepro"] <- mean(pRepro, na.rm = TRUE)
-calibrIBM[1, "CI_inf_rRepro"] <- t.test(pRepro, na.rm = TRUE)$conf.int[1]
-calibrIBM[1, "CI_sup_rRepro"] <- t.test(pRepro, na.rm = TRUE)$conf.int[2]
-# Dispersal distance
-calibrIBM[1, "mean_distDispAlps"] <- mean(distDispAlps, na.rm = TRUE) / 1000
-calibrIBM[1, "CI_inf_distDispAlps"] <- t.test(distDispAlps, na.rm = TRUE)$conf.int[1] / 1000
-calibrIBM[1, "CI_sup_distDispAlps"] <- t.test(distDispAlps, na.rm = TRUE)$conf.int[2]/ 1000
-calibrIBM[1, "mean_distDispJura"] <- mean(distDispJura, na.rm = TRUE) / 1000
-calibrIBM[1, "CI_inf_distDispJura"] <- t.test(distDispJura, na.rm = TRUE)$conf.int[1] / 1000
-calibrIBM[1, "CI_sup_distDispJura"] <- t.test(distDispJura, na.rm = TRUE)$conf.int[2] / 1000
+ggplot(data = as.data.frame(pRepro)) +
+  geom_boxplot(aes(x = "",  y = pRepro), outlier.shape = NA) +
+  geom_point(data = data.frame(pRepro = 0.81),
+             mapping = aes(x = "", y = pRepro), position = position_dodge(width = 0.75),
+             shape = 20, size = 3) +
+  scale_y_continuous(limits = c(0.7, 0.95))
 
-save(calibrIBM, file = "C:/Users/sarah.bauduin/Documents/GitHub/appendix_lynxIBM/module/outputs_bestCal.RData")
-
+# Distances
+distDisp <- rbind(cbind.data.frame(distD = distDispAlps / 1000, Populations = "Alps"),
+                      cbind.data.frame(distD = distDispJura / 1000, Populations = "Jura"))
+ggplot(data = distDisp, fill = Populations) +
+  geom_boxplot(aes(x = "", y = distD, fill = Populations), outlier.shape = NA) +
+  # Mean reference values
+  geom_point(data = cbind.data.frame(distD = c(26, 63), Populations = c("Alps", "Jura")),
+             mapping = aes(x = "", y = distD, group = Populations), position = position_dodge(width = 0.75),
+             shape = 20, size = 3) +
+  # CI reference values
+  geom_point(data = cbind.data.frame(distD = c(15, 36, 39, 87), 
+                                     Populations = c("Alps", "Alps", "Jura", "Jura")),
+             mapping = aes(x = "", y = distD, group = Populations), position = position_dodge(width = 0.75),
+             shape = 20, size = 5) +
+  scale_y_continuous(limits = c(0, 150)) +
+  labs(y = "Dispersal distance (km)", x = "")
 
 
 ################################################################
@@ -471,6 +490,15 @@ for(i in 1:length(listSim)){ # for each simulation run
   print(i)
 }
 
+# Reload to be sure the saved results are the original ones
+load("C:/Users/sarah.bauduin/Documents/GitHub/appendix_lynxIBM/module/outputs_bestCal.RData")
+save(rAllRes_Alps, rAllDisp_Alps, rCollRes_Alps, rCollDisp_Alps, nCollAlps,
+     rAllRes_Jura, rAllDisp_Jura, rCollRes_Jura, rCollDisp_Jura, nCollJura,
+     pRepro, distDispAlps, distDispJura, 
+     popAlps, popJura, popVP, popBF,
+     file = "C:/Users/sarah.bauduin/Documents/GitHub/appendix_lynxIBM/module/outputs_bestCal.RData")
+
+
 allPop <- rbind(cbind.data.frame(popAlps, pop = "Alps"), cbind.data.frame(popJura, pop = "Jura"),
                 cbind.data.frame(popVP, pop = "Vosges-Palatinate"), cbind.data.frame(popBF, pop = "Black Forest"))
 
@@ -492,7 +520,10 @@ ggplot(allPopSum, aes(x=year, y=r, colour=Populations)) +
   geom_ribbon(aes(ymin=r-ci, ymax=r+ci, x=year, fill=Populations),alpha = 0.3) +
   geom_line() +
   geom_point() +
-  coord_cartesian(ylim=c(0.8, 1.6)) +
+  # Growth rate = 1
+  geom_line(data = cbind.data.frame(year = 1:51, GR = 1), 
+            mapping = aes(x = year, y = GR), color = "grey10", linetype = "dashed") +
+  coord_cartesian(ylim=c(0.9, 1.5)) +
   annotate("rect", xmin = -Inf, xmax = 3, ymin = -Inf, ymax = Inf, alpha = .7) +
   labs(x ="Years simulated", y = "Population growth rates")
 
@@ -519,7 +550,7 @@ for(i in 1:length(listSim)){ # for each simulation run
 }
 
 # Transfer the data from the worldMatrix map to a raster format
-mapLynxAbundRas <- raster("appendix_lynxIBM/module/inputs/habMap.tif")
+mapLynxAbundRas <- raster("C:/Users/sarah.bauduin/Documents/GitHub/appendix_lynxIBM/module/inputs/habMap.tif")
 # Rescale the value to obtain a mean over all simulations
 mapLynxAbundRas[] <- of(world = mapLynxAbund, agents = NetLogoR::patches(mapLynxAbund)) / nSim
 # The map before was of 1 km2, transform it into 100 km2
@@ -528,7 +559,7 @@ mapLynxAbund100km2 <- aggregate(mapLynxAbundRas, fact = 10, fun = sum)
 mapLynxAbund100km2[mapLynxAbund100km2 == 0] <- NA
 # Plot the density with the country borders
 plot(mapLynxAbund100km2)
-pays <- shapefile("appendix_lynxIBM/module/inputs/countryBorders.shp")
+pays <- shapefile("C:/Users/sarah.bauduin/Documents/GitHub/appendix_lynxIBM/module/inputs/countryBorders.shp")
 plot(pays, add = TRUE)
 
 
@@ -587,50 +618,13 @@ for(i in 1:length(listSim)){ # for each simulation run
   print(i)
 }
 
-# Summarize the data
-movePopLongDT <- melt(setDT(as.data.frame(movePop)), id = c("repSim", "year"))
-# Compute the cumulative sum of the movement over the years per simulation and per variable (=pair of populations with a direction)
-movePopLongDT[, Cum.Sum := cumsum(value), by=list(repSim, variable)] 
-# Compute the mean and 95% confidence intervals per year and per variable
-movePopLongDTSum <- summarySE(as.data.frame(movePopLongDT), measurevar = "Cum.Sum", groupvars = c("year","variable"))
-# Remove the variable where there was no movement simulated between the two population
-movePopLongDTSum2 <- movePopLongDTSum[movePopLongDTSum$variable %in% movePopLongDTSum[movePopLongDTSum$year == lastYear
-                                                                                      & movePopLongDTSum$Cum.Sum >= 0.05,"variable"],]
-movePopLongDTSum2$variable <- as.character(movePopLongDTSum2$variable)
-# Rename the variable to display in the legend of the plot
-colnames(movePopLongDTSum2)[2] <- "Populations"
-movePopLongDTSum2[movePopLongDTSum2$Populations == "AtoJ", "Populations"] <- "Alps to Jura"
-movePopLongDTSum2[movePopLongDTSum2$Populations == "AtoVP", "Populations"] <- "Alps to Vosges-Palatinate"
-movePopLongDTSum2[movePopLongDTSum2$Populations == "AtoBF", "Populations"] <- "Alps to Black Forest"
-movePopLongDTSum2[movePopLongDTSum2$Populations == "JtoA", "Populations"] <- "Jura to Alps"
-movePopLongDTSum2[movePopLongDTSum2$Populations == "JtoVP", "Populations"] <- "Jura to Vosges-Palatinate"
-movePopLongDTSum2[movePopLongDTSum2$Populations == "JtoBF", "Populations"] <- "Jura to Black Forest"
-movePopLongDTSum2[movePopLongDTSum2$Populations == "VPtoA", "Populations"] <- "Vosges-Palatinate to Alps"
-movePopLongDTSum2[movePopLongDTSum2$Populations == "VPtoJ", "Populations"] <- "Vosges-Palatinate to Jura"
-movePopLongDTSum2[movePopLongDTSum2$Populations == "VPtoBF", "Populations"] <- "Vosges-Palatinate to Black Forest"
-movePopLongDTSum2[movePopLongDTSum2$Populations == "BFtoA", "Populations"] <- "Black Forest to Alps"
-movePopLongDTSum2[movePopLongDTSum2$Populations == "BFtoJ", "Populations"] <- "Black Forest to Jura"
-movePopLongDTSum2[movePopLongDTSum2$Populations == "BFtoVP", "Populations"] <- "Black Forest to Vosges-Palatinate"
-# Organize the factor into orders
-movePopLongDTSum2$Populations <- factor(movePopLongDTSum2$Populations, levels =c(
-  "Alps to Jura","Alps to Vosges-Palatinate","Alps to Black Forest",
-  "Jura to Alps","Jura to Vosges-Palatinate","Jura to Black Forest",
-  "Vosges-Palatinate to Alps","Vosges-Palatinate to Jura","Vosges-Palatinate to Black Forest",
-  "Black Forest to Alps","Black Forest to Jura","Black Forest to Vosges-Palatinate"
-))
-
-# Plot
-colRainbow <- rainbow_hcl(n = length(unique(movePopLongDTSum2$Populations)), c = 130, l = 70)
-
-ggplot(movePopLongDTSum2, aes(x = year, y = Cum.Sum, colour = Populations)) + 
-  geom_ribbon(aes(ymin = Cum.Sum-ci, ymax = Cum.Sum+ci, x = year, fill = Populations), alpha = 0.3) +
-  geom_line() +
-  geom_point() +
-  labs(x= "Years simulated", y = "Cumulative sum of established individuals in their non-native population", color = "Populations") +
-  scale_color_manual(values = colRainbow) +
-  scale_fill_manual(values = colRainbow) +
-  annotate("rect", xmin = -Inf, xmax = 3, ymin = -Inf, ymax = Inf, alpha = .7)
-
+load("C:/Users/sarah.bauduin/Documents/GitHub/appendix_lynxIBM/module/outputs_bestCal.RData")
+save(rAllRes_Alps, rAllDisp_Alps, rCollRes_Alps, rCollDisp_Alps, nCollAlps,
+     rAllRes_Jura, rAllDisp_Jura, rCollRes_Jura, rCollDisp_Jura, nCollJura,
+     pRepro, distDispAlps, distDispJura, 
+     popAlps, popJura, popVP, popBF,
+     movePop,
+     file = "C:/Users/sarah.bauduin/Documents/GitHub/appendix_lynxIBM/module/outputs_bestCal.RData")
 
 # Non-cumulative number of individuals
 library(Rmisc)
@@ -643,23 +637,68 @@ meanMovePop <- movePopDF %>% group_by(year, variable) %>%
             lower = CI(value)[3],
             upper = CI(value)[1])
 meanMovePop[meanMovePop$lower < 0, "lower"] <- 0
+# Rename the variable to display in the legend of the plot
+meanMovePop <- as.data.frame(meanMovePop)
+colnames(meanMovePop)[2] <- "Populations"
 
 # Plot
 colRainbow <- rainbow_hcl(n = 12, c = 130, l = 70)
 
-ggplot(meanMovePop, aes(x = year, y = mean, colour = variable)) + 
-  #geom_ribbon(aes(ymin = lower, ymax = upper, x = year, fill = variable), alpha = 0.3) +
+ggplot(meanMovePop, aes(x = year, y = mean, colour = Populations)) + 
+  geom_ribbon(aes(ymin = lower, ymax = upper, x = year, fill = Populations), alpha = 0.3) +
   geom_line() +
   geom_point() +
-  labs(x= "Years simulated", y = "Number of individuals establishing outside of their native population", color = "Populations") +
+  labs(x= "Years simulated", y = "Number of individuals establishing outside of their native population") +
   scale_color_manual(values = colRainbow, name = "", labels = c("Alps to Jura", "Alps to Black Forest", "Alps to Vosges-Palatinate", "Jura to Alps",
                                                      "Jura to Black Forest", "Jura to Vosges-Palatinate", "Black Forest to Alps",
                                                      "Black Forest to Jura", "Black Forest to Vosges-Palatinate", "Vosges-Palatinate to Alps",
                                                      "Vosges-Palatinate to Black Forest", "Vosges-Palatinate to Jura")) +
-  #guides(color = guide_legend(ncol = 4)) + 
-  #scale_fill_manual(values = colRainbow) +
-  annotate("rect", xmin = -Inf, xmax = 3, ymin = -Inf, ymax = Inf, alpha = .7)# +
-  #theme(legend.position = "bottom")
+  scale_fill_manual(values = colRainbow, name = "", labels = c("Alps to Jura", "Alps to Black Forest", "Alps to Vosges-Palatinate", "Jura to Alps",
+                                                                "Jura to Black Forest", "Jura to Vosges-Palatinate", "Black Forest to Alps",
+                                                                "Black Forest to Jura", "Black Forest to Vosges-Palatinate", "Vosges-Palatinate to Alps",
+                                                                "Vosges-Palatinate to Black Forest", "Vosges-Palatinate to Jura")) +
+  annotate("rect", xmin = -Inf, xmax = 3, ymin = -Inf, ymax = Inf, alpha = .7)
+
+# In four different plot for the different populations
+ggplot(meanMovePop[meanMovePop$Populations %in% c("AtoJ", "AtoVP", "AtoBF"), ], aes(x = year, y = mean, colour = Populations)) + 
+  geom_ribbon(aes(ymin = lower, ymax = upper, x = year, fill = Populations), alpha = 0.3) +
+  geom_line() +
+  geom_point() +
+  labs(x= "Years simulated", y = "Number of individuals establishing outside of their native population") +
+  scale_color_manual(values = c("#00BFC4",  "#C77CFF", "#7CAE00"), name = "", labels = c("Alps to Jura", "Alps to Black Forest", "Alps to Vosges-Palatinate")) +
+  scale_fill_manual(values = c("#00BFC4", "#C77CFF", "#7CAE00"), name = "", labels = c("Alps to Jura", "Alps to Black Forest", "Alps to Vosges-Palatinate")) +
+  annotate("rect", xmin = -Inf, xmax = 3, ymin = -Inf, ymax = Inf, alpha = .7) +
+  theme(legend.position = "bottom")
+
+ggplot(meanMovePop[meanMovePop$Populations %in% c("JtoA", "JtoVP", "JtoBF"), ], aes(x = year, y = mean, colour = Populations)) + 
+  geom_ribbon(aes(ymin = lower, ymax = upper, x = year, fill = Populations), alpha = 0.3) +
+  geom_line() +
+  geom_point() +
+  labs(x= "Years simulated", y = "Number of individuals establishing outside of their native population") +
+  scale_color_manual(values = c("#F8766D",  "#C77CFF", "#7CAE00"), name = "", labels = c("Jura to Alps", "Jura to Black Forest", "Jura to Vosges-Palatinate")) +
+  scale_fill_manual(values = c("#F8766D",  "#C77CFF", "#7CAE00"), name = "", labels = c("Jura to Alps", "Jura to Black Forest", "Jura to Vosges-Palatinate")) +
+  annotate("rect", xmin = -Inf, xmax = 3, ymin = -Inf, ymax = Inf, alpha = .7) +
+  theme(legend.position = "bottom")
+
+ggplot(meanMovePop[meanMovePop$Populations %in% c("VPtoA", "VPtoJ", "VPtoBF"), ], aes(x = year, y = mean, colour = Populations)) + 
+  geom_ribbon(aes(ymin = lower, ymax = upper, x = year, fill = Populations), alpha = 0.3) +
+  geom_line() +
+  geom_point() +
+  labs(x= "Years simulated", y = "Number of individuals establishing outside of their native population") +
+  scale_color_manual(values = c("#F8766D",  "#00BFC4", "#C77CFF"), name = "", labels = c("Vosges-Palatinate to Alps", "Vosges-Palatinate to Jura", "Vosges-Palatinate to Black Forest")) +
+  scale_fill_manual(values = c("#F8766D",  "#00BFC4", "#C77CFF"), name = "", labels = c("Vosges-Palatinate to Alps", "Vosges-Palatinate to Jura", "Vosges-Palatinate to Black Forest")) +
+  annotate("rect", xmin = -Inf, xmax = 3, ymin = -Inf, ymax = Inf, alpha = .7) +
+  theme(legend.position = "bottom")
+
+ggplot(meanMovePop[meanMovePop$Populations %in% c("BFtoA", "BFtoJ", "BFtoVP"), ], aes(x = year, y = mean, colour = Populations)) + 
+  geom_ribbon(aes(ymin = lower, ymax = upper, x = year, fill = Populations), alpha = 0.3) +
+  geom_line() +
+  geom_point() +
+  labs(x= "Years simulated", y = "Number of individuals establishing outside of their native population") +
+  scale_color_manual(values = c("#F8766D",  "#00BFC4", "#7CAE00"), name = "", labels = c("Black Forest to Alps", "Black Forest to Jura", "Black Forest to Vosges-Palatinate")) +
+  scale_fill_manual(values = c("#F8766D",  "#00BFC4", "#7CAE00"), name = "", labels = c("Black Forest to Alps", "Black Forest to Jura", "Black Forest to Vosges-Palatinate")) +
+  annotate("rect", xmin = -Inf, xmax = 3, ymin = -Inf, ymax = Inf, alpha = .7) +
+  theme(legend.position = "bottom")
 
 
 #########################
@@ -682,18 +721,18 @@ for(i in 1:length(listSim)){ # for each simulation run
 }
 
 # Transfer the data from the worldMatrix map to a raster format
-terrOccMapRas <- raster("appendix_lynxIBM/module/inputs/habMap.tif")
+terrOccMapRas <- raster("C:/Users/sarah.bauduin/Documents/GitHub/appendix_lynxIBM/module/inputs/habMap.tif")
 # Rescale the value to obtain a mean over all simulations
 terrOccMapRas[] <- of(world = terrOccMap, agents = NetLogoR::patches(terrOccMap)) / nSim
 # Give NA where there were no female lynx territory simulated
 terrOccMapRas[terrOccMapRas == 0] <- NA
 # Plot the territory occupancy with the country borders
 plot(terrOccMapRas)
-pays <- shapefile("appendix_lynxIBM/module/inputs/countryBorders.shp")
+pays <- shapefile("C:/Users/sarah.bauduin/Documents/GitHub/appendix_lynxIBM/module/inputs/countryBorders.shp")
 plot(pays, add = TRUE)
 
 # Include the non-used breeding habitat
-habMapSpaDES <- raster("appendix_lynxIBM/module/inputs/habMap.tif")
+habMapSpaDES <- raster("C:/Users/sarah.bauduin/Documents/GitHub/appendix_lynxIBM/module/inputs/habMap.tif")
 habMapSpaDES[habMapSpaDES %in% c(0, 1, 2, 3)] <- NA
 habMapSpaDES[habMapSpaDES == 4] <- 1
 habMapSpaDES[!is.na(terrOccMapRas)] <- NA
