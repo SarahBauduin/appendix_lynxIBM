@@ -558,7 +558,7 @@ mapLynxAbund100km2 <- aggregate(mapLynxAbundRas, fact = 10, fun = sum)
 # Give NA where there were no lynx simulated
 mapLynxAbund100km2[mapLynxAbund100km2 == 0] <- NA
 # Plot the density with the country borders
-plot(mapLynxAbund100km2)
+plot(mapLynxAbund100km2, col = wes_palette("Zissou1", 100, type = "continuous"))
 pays <- shapefile("C:/Users/sarah.bauduin/Documents/GitHub/appendix_lynxIBM/module/inputs/countryBorders.shp")
 plot(pays, add = TRUE)
 
@@ -664,9 +664,12 @@ ggplot(meanMovePop[meanMovePop$Populations %in% c("AtoJ", "AtoVP", "AtoBF"), ], 
   geom_ribbon(aes(ymin = lower, ymax = upper, x = year, fill = Populations), alpha = 0.3) +
   geom_line() +
   geom_point() +
-  labs(x= "Years simulated", y = "Number of individuals establishing outside of their native population") +
-  scale_color_manual(values = c("#00BFC4",  "#C77CFF", "#7CAE00"), name = "", labels = c("Alps to Jura", "Alps to Black Forest", "Alps to Vosges-Palatinate")) +
-  scale_fill_manual(values = c("#00BFC4", "#C77CFF", "#7CAE00"), name = "", labels = c("Alps to Jura", "Alps to Black Forest", "Alps to Vosges-Palatinate")) +
+  #labs(x= "Years simulated", y = "Number of individuals establishing outside of their native population") +
+  labs(x= "Years simulated", y = "Number of individuals") +
+  # scale_color_manual(values = c("#00BFC4",  "#C77CFF", "#7CAE00"), name = "", labels = c("Alps to Jura", "Alps to Black Forest", "Alps to Vosges-Palatinate")) +
+  # scale_fill_manual(values = c("#00BFC4", "#C77CFF", "#7CAE00"), name = "", labels = c("Alps to Jura", "Alps to Black Forest", "Alps to Vosges-Palatinate")) +
+  scale_color_manual(values = c("#00BFC4",  "#C77CFF", "#7CAE00"), name = "", labels = c("In Jura", "In Black Forest", "In Vosges-Palatinate")) +
+  scale_fill_manual(values = c("#00BFC4", "#C77CFF", "#7CAE00"), name = "", labels = c("In Jura", "In Black Forest", "In Vosges-Palatinate")) +
   annotate("rect", xmin = -Inf, xmax = 3, ymin = -Inf, ymax = Inf, alpha = .7) +
   theme(legend.position = "bottom")
 
@@ -674,9 +677,12 @@ ggplot(meanMovePop[meanMovePop$Populations %in% c("JtoA", "JtoVP", "JtoBF"), ], 
   geom_ribbon(aes(ymin = lower, ymax = upper, x = year, fill = Populations), alpha = 0.3) +
   geom_line() +
   geom_point() +
-  labs(x= "Years simulated", y = "Number of individuals establishing outside of their native population") +
-  scale_color_manual(values = c("#F8766D",  "#C77CFF", "#7CAE00"), name = "", labels = c("Jura to Alps", "Jura to Black Forest", "Jura to Vosges-Palatinate")) +
-  scale_fill_manual(values = c("#F8766D",  "#C77CFF", "#7CAE00"), name = "", labels = c("Jura to Alps", "Jura to Black Forest", "Jura to Vosges-Palatinate")) +
+  #labs(x= "Years simulated", y = "Number of individuals establishing outside of their native population") +
+  labs(x= "Years simulated", y = "Number of individuals") +
+  # scale_color_manual(values = c("#F8766D",  "#C77CFF", "#7CAE00"), name = "", labels = c("Jura to Alps", "Jura to Black Forest", "Jura to Vosges-Palatinate")) +
+  # scale_fill_manual(values = c("#F8766D",  "#C77CFF", "#7CAE00"), name = "", labels = c("Jura to Alps", "Jura to Black Forest", "Jura to Vosges-Palatinate")) +
+  scale_color_manual(values = c("#F8766D",  "#C77CFF", "#7CAE00"), name = "", labels = c("In Alps", "In Black Forest", "In Vosges-Palatinate")) +
+  scale_fill_manual(values = c("#F8766D",  "#C77CFF", "#7CAE00"), name = "", labels = c("In Alps", "In Black Forest", "In Vosges-Palatinate")) +
   annotate("rect", xmin = -Inf, xmax = 3, ymin = -Inf, ymax = Inf, alpha = .7) +
   theme(legend.position = "bottom")
 
@@ -684,9 +690,12 @@ ggplot(meanMovePop[meanMovePop$Populations %in% c("VPtoA", "VPtoJ", "VPtoBF"), ]
   geom_ribbon(aes(ymin = lower, ymax = upper, x = year, fill = Populations), alpha = 0.3) +
   geom_line() +
   geom_point() +
-  labs(x= "Years simulated", y = "Number of individuals establishing outside of their native population") +
-  scale_color_manual(values = c("#F8766D",  "#00BFC4", "#C77CFF"), name = "", labels = c("Vosges-Palatinate to Alps", "Vosges-Palatinate to Jura", "Vosges-Palatinate to Black Forest")) +
-  scale_fill_manual(values = c("#F8766D",  "#00BFC4", "#C77CFF"), name = "", labels = c("Vosges-Palatinate to Alps", "Vosges-Palatinate to Jura", "Vosges-Palatinate to Black Forest")) +
+  #labs(x= "Years simulated", y = "Number of individuals establishing outside of their native population") +
+  labs(x= "Years simulated", y = "Number of individuals") +
+  # scale_color_manual(values = c("#F8766D",  "#00BFC4", "#C77CFF"), name = "", labels = c("Vosges-Palatinate to Alps", "Vosges-Palatinate to Jura", "Vosges-Palatinate to Black Forest")) +
+  # scale_fill_manual(values = c("#F8766D",  "#00BFC4", "#C77CFF"), name = "", labels = c("Vosges-Palatinate to Alps", "Vosges-Palatinate to Jura", "Vosges-Palatinate to Black Forest")) +
+  scale_color_manual(values = c("#F8766D",  "#00BFC4", "#C77CFF"), name = "", labels = c("In Alps", "In Jura", "In Black Forest")) +
+  scale_fill_manual(values = c("#F8766D",  "#00BFC4", "#C77CFF"), name = "", labels = c("In Alps", "In Jura", "In Black Forest")) +
   annotate("rect", xmin = -Inf, xmax = 3, ymin = -Inf, ymax = Inf, alpha = .7) +
   theme(legend.position = "bottom")
 
@@ -694,9 +703,12 @@ ggplot(meanMovePop[meanMovePop$Populations %in% c("BFtoA", "BFtoJ", "BFtoVP"), ]
   geom_ribbon(aes(ymin = lower, ymax = upper, x = year, fill = Populations), alpha = 0.3) +
   geom_line() +
   geom_point() +
-  labs(x= "Years simulated", y = "Number of individuals establishing outside of their native population") +
-  scale_color_manual(values = c("#F8766D",  "#00BFC4", "#7CAE00"), name = "", labels = c("Black Forest to Alps", "Black Forest to Jura", "Black Forest to Vosges-Palatinate")) +
-  scale_fill_manual(values = c("#F8766D",  "#00BFC4", "#7CAE00"), name = "", labels = c("Black Forest to Alps", "Black Forest to Jura", "Black Forest to Vosges-Palatinate")) +
+  #labs(x= "Years simulated", y = "Number of individuals establishing outside of their native population") +
+  labs(x= "Years simulated", y = "Number of individuals") +
+  # scale_color_manual(values = c("#F8766D",  "#00BFC4", "#7CAE00"), name = "", labels = c("Black Forest to Alps", "Black Forest to Jura", "Black Forest to Vosges-Palatinate")) +
+  # scale_fill_manual(values = c("#F8766D",  "#00BFC4", "#7CAE00"), name = "", labels = c("Black Forest to Alps", "Black Forest to Jura", "Black Forest to Vosges-Palatinate")) +
+  scale_color_manual(values = c("#F8766D",  "#00BFC4", "#7CAE00"), name = "", labels = c("In Alps", "In Jura", "In Vosges-Palatinate")) +
+  scale_fill_manual(values = c("#F8766D",  "#00BFC4", "#7CAE00"), name = "", labels = c("In Alps", "In Jura", "In Vosges-Palatinate")) +
   annotate("rect", xmin = -Inf, xmax = 3, ymin = -Inf, ymax = Inf, alpha = .7) +
   theme(legend.position = "bottom")
 
