@@ -411,7 +411,7 @@ collPerYear <- rbind(cbind.data.frame(nColl = nCollAlps[seq(from = 2, to = (51 *
 # Collisions Alps
 ggplot(data = collPerYear[collPerYear$Populations == "Alps",]) +
   geom_boxplot(aes(x = Year, y = nColl, group = Year), fill = "#F8766D", color = "#F8766D") +
-  geom_point(data = cbind.data.frame(nColl = c(2, 0, 3, 1, 3), Populations = "Jura", 
+  geom_point(data = cbind.data.frame(nColl = c(2, 0, 3, 1, 3), Populations = "Alps", 
                                      Year = 1:5),
              mapping = aes(x = Year, y = nColl, group = Year), position = position_dodge(width = 0.75),
              shape = 20, size = 3) +
