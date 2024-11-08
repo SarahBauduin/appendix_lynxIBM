@@ -10,12 +10,12 @@ The **module** folder contains 4 folders: **calibration**, **inputs**, **lynxIBM
 The folder **calibration** contains all the files used to calibrate the model and explore its sensitivity. In this folder there are:
 - a **calibration_phase1** folder in which there are 50 folders named **cal01**, **cal02**, **cal03**, ... up until **cal50**. In each of these folders, there are 15 files, each one being a simulation output replicate using the parameters of the calibration. For example, the 15 files in the **cal01** folder have been run with the same calibration as defined for **cal01** from the first phase of calibration. 
 - a **calibration_phase2** folder in which there are 50 folders named **cal01**, **cal02**, **cal03**, ... up until **cal50**. In each of these folders, there are 15 files, each one being a simulation output replicate using the parameters of the calibration. For example, the 15 files in the **cal01** folder have been run with the same calibration as defined for **cal01** from the second phase of calibration. 
-- **calibrIBM_phase1.RData** is dataframe which combines the mean value and 95% interval of the key simulation outputs to match from **valuesToCalibrate.txt** and the corresponded values computed from the 15 files of each calibration from the **calibration_phase1** folder.
-- **calibrIBM_phase2.RData** is dataframe which combine the mean value and 95% interval of the key simulation outputs to match from **valuesToCalibrate.txt** and the corresponded values computed from the 15 files of each calibration from the **calibration_phase2** folder.
+- **calibrIBM_phase1.RData** is dataframe which combines the mean value and 95% interval of the patterns to match from **valuesToCalibrate.txt** and the corresponded values computed from the 15 files of each calibration from the **calibration_phase1** folder.
+- **calibrIBM_phase2.RData** is dataframe which combines the mean value and 95% interval of the patterns to match from **valuesToCalibrate.txt** and the corresponded values computed from the 15 files of each calibration from the **calibration_phase2** folder.
 - **chooseParam.R** is the code to sample different sets of parameter for each calibration phase.
-- **exploreSensitivity.R** is the code which explores the simulation outputs from **calibration_phase2** and explores the variability among all calibration by comparing key model outputs from the best calibration selected and the 49 others.
-- **findBestCal.R** is the code to analyze each simulation output from each calibration for phase 1 and 2 and to compute the mean value and 95% confidence intervals of the key outputs from **valuesToCalibrate.txt** (producing **calibrIBM_phase1.RData** and **calibrIBM_phase2.RData**) and identify the calibration(s) which best reproduced (i.e., match the closest) these values.
-- **valuesToCalibrate.txt** is a text document which lists the mean value and 95% interval of key simulation outputs to match to calibrate the model parameters.
+- **exploreSensitivity.R** is the code which explores the simulation outputs from **calibration_phase2** and explores the variability among all calibration by comparing pattern values from the best calibration selected and the 49 others.
+- **findBestCal.R** is the code to analyze each simulation output from each calibration for phase 1 and 2 and to compute the mean value and 95% confidence intervals of the patterns from **valuesToCalibrate.txt** (producing **calibrIBM_phase1.RData** and **calibrIBM_phase2.RData**) and identify the calibration(s) which best reproduced (i.e., match the closest) these pattern values.
+- **valuesToCalibrate.txt** is a text document which lists the mean value and 95% interval of the patterns to match to calibrate the model parameters.
 
 The folder **inputs** contains all the input files to run the lynx spatially explicit individual-based model (SE-IBM).
 In this folder there are: 
@@ -37,5 +37,5 @@ In the folder **outputs** there are:
 The file **outputs_bestCal.RData** assembles multiple R objects of different key model outputs. For each object, there are the value computed for each of the 100 simulation outputs from the **outputs** folder.
 
 
-The **analyzeResults.R** code takes the 100 simulation outputs from the **module** folder and analyze them (producing **outputs_bestCal.RData**), which are the results (key model outputs) and figures in the publication.
+The **analyzeResults.R** code takes the 100 simulation outputs from the **module** folder and analyze them (producing **outputs_bestCal.RData**), and computing the results and figures in the publication.
 
