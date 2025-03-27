@@ -169,9 +169,9 @@ mean(abs(((minR$minR - allPopSum[allPopSum$Populations == "Alps" & allPopSum$rep
 # Plot Jura population
 ggplot(allPopSum[allPopSum$Populations == "Jura",], aes(x = year, y = r, group = repFolder)) + 
   geom_ribbon(aes(ymin = r - ci, ymax = r + ci, x = year), 
-              alpha = 0.15, fill = "#00BFC4") +
-  geom_line(color = "#00BFC4") +
-  geom_point(color = "#00BFC4") +
+              alpha = 0.15, fill = "#7CAE00") +
+  geom_line(color = "#7CAE00") +
+  geom_point(color = "#7CAE00") +
   # Selected value
   geom_ribbon(data = allPopSum[allPopSum$Populations == "Jura" & allPopSum$repFolder == "cal15",], 
               mapping = aes(ymin = r - ci, ymax = r + ci, x = year), 
@@ -206,9 +206,9 @@ mean(abs(((minR$minR - allPopSum[allPopSum$Populations == "Jura" & allPopSum$rep
 # Plot Vosges-Palatinate population
 ggplot(allPopSum[allPopSum$Populations == "Vosges-Palatinate",], aes(x = year, y = r, group = repFolder)) + 
   geom_ribbon(aes(ymin = r - ci, ymax = r + ci, x = year),
-              alpha = 0.15, fill = "#7CAE00") +
-  geom_line(color = "#7CAE00") +
-  geom_point(color = "#7CAE00") +
+              alpha = 0.15, fill = "#00BFC4") +
+  geom_line(color = "#00BFC4") +
+  geom_point(color = "#00BFC4") +
   # Selected value
   geom_ribbon(data = allPopSum[allPopSum$Populations == "Vosges-Palatinate" & allPopSum$repFolder == "cal15",], 
               mapping = aes(ymin = r - ci, ymax = r + ci, x = year),
