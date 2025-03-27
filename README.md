@@ -1,11 +1,13 @@
 # R code to run a spatially-explicit individual-based model (SE-IBM) for the Eurasian lynx
 
-Codes and results regarding the article entitled: "Modelling Eurasian lynx populations in Western Europe: What prospects for the next 50 years?".
+Data, scripts, code, and supplementary information regarding the article entitled: "Modelling Eurasian lynx populations in Western Europe: What prospects for the next 50 years?".
 
 The **LICENSE** file gives the terms to reuse the model.
 
+The **Supplementary Information_Bauduin_Modelling Eurasian lynx populations in Western Europe What prospects for the next 50 years** document contains the 4 Supplementary Information completing the article published in PCI Ecology.
 
-The **module** folder contains 4 folders: **calibration**, **inputs**, **lynxIBM** and **outputs**, and 1 file **outputs_bestCal.RData**.
+
+The **code** folder contains 4 folders: **calibration**, **inputs**, **lynxIBM** and **outputs**, and 2 files **outputs_bestCal.RData** and **analyzeResults.R**.
 
 The folder **calibration** contains all the files used to calibrate the model and explore its sensitivity. In this folder there are:
 - a **calibration_phase1** folder in which there are 50 folders named **cal01**, **cal02**, **cal03**, ... up until **cal50**. In each of these folders, there are 15 files, each one being a simulation output replicate using the parameters of the calibration. For example, the 15 files in the **cal01** folder have been run with the same calibration as defined for **cal01** from the first phase of calibration. 
@@ -34,8 +36,8 @@ In the folder **outputs** there are:
 - **bestCalibration.txt** is a text document which lists the value used for the calibrated parameters to run the model to produce these outputs (i.e., values from the best calibration).
 - 100 simulation outputs of the SE-IBM.
 
+The **analyzeResults.R** code takes the 100 simulation outputs from the **module** folder and analyze them (producing **outputs_bestCal.RData**), and computing the results and figures in the publication.
+
 The file **outputs_bestCal.RData** assembles multiple R objects of different key model outputs. For each object, there are the value computed for each of the 100 simulation outputs from the **outputs** folder.
 
-
-The **analyzeResults.R** code takes the 100 simulation outputs from the **module** folder and analyze them (producing **outputs_bestCal.RData**), and computing the results and figures in the publication.
 
